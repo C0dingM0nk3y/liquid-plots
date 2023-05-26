@@ -1,2 +1,2 @@
 # liquid-plots
-Pulls data from Binance and CMC to 
+Tool for visualization of current LP positions from Binance account
