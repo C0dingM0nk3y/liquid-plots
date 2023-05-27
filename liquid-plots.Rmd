@@ -1,0 +1,194 @@
+---
+title: "LiquidPlots"
+output: html_notebook
+---
+
+Author: C0dingM0nk3y (reach my on GitHub!)
+
+```{r init}
+#If not installed yet, install pacman package manager by "uncommenting" the line below
+#install.packages("pacman")
+
+### Dependences
+#> API requests
+pacman::p_load('digest') #https://www.rdocumentation.org/packages/digest/versions/0.6.29/topics/hmac
+pacman::p_load('httr') #API tools #https://www.dataquest.io/blog/r-api-tutorial/
+pacman::p_load('jsonlite')
+
+#> Data Analysis 
+pacman::p_load('magrittr')
+pacman::p_load('stringr')
+pacman::p_load("tidyverse")
+#pacman::p_load("lubridate")
+
+#> Data visualization
+#pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
+
+# REMOVE
+#pacman::p_load("readxl")
+
+#general options
+options(digits = 12) #max decimal digits
+options(scipen=999) #scientific notation threshold
+```
+
+```{r credentials}
+myPrivatePath <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt"
+
+#Import credentials
+#keys <- read.csv2("credentials.txt", col.names = c("Type", "Key"), header = F)
+keys <- read.csv2(myPrivatePath, col.names = c("Type", "Key"), header = F)
+
+key_public <- keys[1,"Key", drop=T]
+key_private <- keys[2,"Key", drop=T]
+
+if(key_public=="YOUR-BINANCE-API-KEY"){
+  stop("STOP: add your Binance API credential to /credential.txt (; separated)")
+}
+cat("Fetching data from Binance using the following PUBLIC key:\n\t",key_public,"\n")
+
+rm("keys")
+```
+
+#for info, see: https://binance-docs.github.io/apidocs/spot/en/#change-log
+
+```{r dirs and functions}
+API_root <- "https://api.binance.com" 
+
+# IMPORT: download of ORIGINAL data only 
+dir.IN <- 'DOWNLOADS/' %T>% dir.create(showWarnings = F)
+dir.IN.pools <- paste0(dir.IN, "SinglePools/")  %T>% dir.create(showWarnings = F)
+dir.OUT <- 'OUTPUTS/' %T>% dir.create(showWarnings = F)
+
+#for reference:
+  "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/@SCRIPTS//Binance_FUNCTIONS_v1.9.R"
+
+source("functions.R")
+```
+
+
+```{r liquidity-now}
+# DOWNLOAD
+liquidity.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidity", timestamp = TRUE, sign = TRUE) 
+
+# JSON EXPORT
+liquidity.j.path <- paste0(dir.IN, "API_liquidity.json")
+write_json(liquidity.j, liquidity.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS
+cat(sprintf("\t-> export to: %s\n", liquidity.j.path))
+
+# CSV CONVERSION
+liq.df <- fromJSON(liquidity.j.path, simplifyVector = TRUE,
+                   flatten = TRUE) #automatically UN-Nest nested columns
+            
+write.csv2(liq.df, file = str_replace(liquidity.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
+            str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), nrow(liq.df)))
+
+# TABLE INTERPRETATION
+#> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
+activePools.df <- liquidity.tableInterpreter(liquidity.j.path) 
+activePools.df.path <- paste0(dir.OUT, "ActivePools.csv")
+
+write.csv2(activePools.df, activePools.df.path, row.names = F)
+cat(sprintf("\tACTIVE POOLS\t-> export to: %s (%s rows)\n", activePools.df.path, nrow(activePools.df)))
+```
+
+```{r temp-1}
+activePools.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX", activePools.df$poolName))
+```
+
+```{r active pools}
+poolId_list <- unique(activePools.df$poolId)
+poolNames_list <- unique(activePools.df$poolName)
+
+#ADD some nice Pool overview table
+
+```
+
+```{r singlePools}
+# MAX trx x pool is 100. Use pagination if more is required (not recommended)
+
+for (n in 1:length(poolId_list)){
+  #POOL-NAME
+  id <- poolId_list[n]
+  pName <- poolNames_list[n]
+  
+  cat(sprintf("\n\tPool: %s (poolId=%s)", pName, id))
+  
+  #POOL OPERATIONS
+  ops.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidityOps", 
+                     API_param = paste0("limit=100&poolId=",id),
+                     timestamp = TRUE, sign = TRUE) 
+  
+  ops.j.path <- paste0(dir.IN.pools, id, "_ops.json")
+  write_json(ops.j, ops.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
+  
+  #CLAIMED DATA
+  claim.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/claimedHistory", 
+                     API_param = paste0("type=1&limit=100&poolId=",id), #type 0/1 = pending/successful
+                     timestamp = TRUE, sign = TRUE) 
+  
+  claim.j.path <- paste0(dir.IN.pools, id, "_claim.json")
+  write_json(claim.j, claim.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
+  }
+```
+
+
+```{r price}
+API_query <- "/api/v3/ticker/price"
+
+price.j.path <- paste0(dir.IN, "API_price.json")
+
+price.j <- BINANCE.GET(API_root, "/api/v3/ticker/price") #download Binance latest Prices
+
+write_json(price.j, price.j.path, auto_unbox=TRUE) #export
+cat("\t> saved to: ", price.j.path, "\n")
+
+price.df <- fromJSON(price.j.path, simplifyVector = TRUE,
+                   flatten = TRUE) #automatically UN-Nest nested columns
+            
+write.csv2(price.df, file = str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
+            str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), nrow(price.df)))
+
+
+
+# EXTRACTS PRICES for the relevant coins
+coinList <- poolNames_list %>% str_split("/") %>% unlist() %>% unique()
+
+priceMatrix <- data.frame()
+refCoin = "USDT"
+
+for (c in coinList){
+  priceMatrix[c,refCoin] <- getPrice(price.df, c, refCoin = refCoin) %>% as.numeric()}
+```
+
+```{r} 
+#merge those two data and plot them nicely
+priceMatrix
+activePools.df
+```
+
+
+```{r ops.INTERPRETATION}
+#PLACE HOLDER for later
+
+# TABLE INTERPRETATION
+ops.df <- fromJSON(ops.j.path, simplifyVector = TRUE,
+                   flatten = TRUE) #automatically UN-Nest nested columns
+
+op.df2 <- unnest_longer(ops.df, col = "liquidityAmount", simplify = T)
+op.df3 <- unnest_wider(op.df2, col = "liquidityAmount", simplify = T)
+
+cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
+            str_replace(ops.j.path, pattern = ".json", "_unpacked.csv"), nrow(ops.df)))
+write.csv2(op.df3, file = str_replace(ops.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+```
+
+
+```{r liq.operations}
+```
+
+```{r}
+```
+
