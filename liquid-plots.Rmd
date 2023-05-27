@@ -1,0 +1,110 @@
+---
+title: "LiquidPlots"
+output: html_notebook
+---
+
+Author: C0dingM0nk3y (reach my on GitHub!)
+
+```{r init}
+#If not installed yet, install pacman package manager by "uncommenting" the line below
+#install.packages("pacman")
+
+### Dependences
+#> API requests
+pacman::p_load('digest') #https://www.rdocumentation.org/packages/digest/versions/0.6.29/topics/hmac
+pacman::p_load('httr') #API tools #https://www.dataquest.io/blog/r-api-tutorial/
+pacman::p_load('jsonlite')
+
+#> Data Analysis 
+pacman::p_load('magrittr')
+#pacman::p_load('stringr')
+#pacman::p_load("tidyverse")
+#pacman::p_load("lubridate")
+
+#> Data visualization
+#pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
+
+# REMOVE
+#pacman::p_load("readxl")
+
+#general options
+options(digits = 12) #max decimal digits
+options(scipen=999) #scientific notation threshold
+```
+
+```{r credentials}
+myPrivatePath <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt"
+
+#Import credentials
+#keys <- read.csv2("credentials.txt", col.names = c("Type", "Key"), header = F)
+keys <- read.csv2(myPrivatePath, col.names = c("Type", "Key"), header = F)
+
+key_public <- keys[1,"Key", drop=T]
+key_private <- keys[2,"Key", drop=T]
+
+if(key_public=="YOUR-BINANCE-API-KEY"){
+  stop("STOP: add your Binance API credential to /credential.txt (; separated)")
+}
+cat("Fetching data from Binance using the following PUBLIC key:\n\t",key_public,"\n")
+
+rm("keys")
+```
+
+```{r dirs and functions}
+API_root <- "https://api.binance.com"
+
+# IMPORT: download of ORIGINAL data only 
+dir.IN <- 'DOWNLOADS/' %T>% dir.create(showWarnings = F)
+dir.OUT <- 'OUTPUTS/' %T>% dir.create(showWarnings = F)
+
+#for reference:
+  "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/@SCRIPTS//Binance_FUNCTIONS_v1.9.R"
+
+source("functions.R")
+```
+
+
+```{r market}
+API_query <- "/api/v3/ticker/price"
+
+price.j.path <- paste0(dir.IN, "API_price.json")
+
+price.j <- BINANCE.GET(API_root, "/api/v3/ticker/price") #download Binance latest Prices
+
+write_json(price.j, price.j.path, auto_unbox=TRUE) #export
+cat("\t> saved to: ", price.j.path, "\n")
+
+price.df <- fromJSON(price.j.path, 
+                   flatten = TRUE, #automatically UN-Nest nested columns
+                   simplifyVector = TRUE) 
+
+write.csv2(price.df, file = str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
+            str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), nrow(price.df)))
+```
+
+```{r liquidity-now}
+# DOWNLOAD
+liquidity.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidity", timestamp = TRUE, sign = TRUE) 
+
+# JSON EXPORT
+liquidity.j.path <- paste0(dir.IN, "API_liquidity.json")
+write_json(liquidity.j, liquidity.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS
+cat(sprintf("\t-> export to: %s\n", liquidity.j.path))
+
+# TABLE INTERPRETATION
+#> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
+liquidity.df <- liquidity.tableInterpreter(liquidity.j.path) 
+
+write.csv2(liquidity.df, str_replace(liquidity.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
+            str_replace(liquidity.j.path, pattern = ".json", "_unpacked.csv"), nrow(liquidity.df)))
+```
+
+```{r temp-1}
+pools.now %<>% subset(grepl("BTC|ETH|ADA|SOL|DOGE|GMX", pools.now$poolName))
+```
+
+
+
+
