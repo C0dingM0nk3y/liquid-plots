@@ -12,7 +12,7 @@ BINANCE.GET <- function(API_root,
   #> wrapper to call API queries from Binance server
   #> Print user feedback if ERROR
   
-  cat(sprintf("\nRequest: '%s' [%s] to %s", API_query, API_param, API_root))
+  cat(sprintf("Request: '%s' [%s] to %s", API_query, API_param, API_root))
   
   #defines query parameters
   totalParams <- API_param #default
@@ -41,7 +41,7 @@ BINANCE.GET <- function(API_root,
   
   # ERROR CAPTURE
   if(request$status_code==200){ #error capture
-    cat("\tDOWNLOADED")}
+    cat("\t>> DOWNLOADED\n")}
   else{
     message(paste0("ERROR on API CALL:", API_query))
     print(request)}
@@ -51,7 +51,6 @@ BINANCE.GET <- function(API_root,
   
   return(json)
 }
-
 
 liquidity.tableInterpreter <- function(jsonPath){
   #> Import json fine and recover data from nested lists (pivot_longer)
@@ -103,6 +102,77 @@ liquidity.tableInterpreter <- function(jsonPath){
     cat(jsonPath, ": not FOUND\n")}
 }
 
+ops.tableInterpreter <- function(jsonPath){
+  # Read LiquidPool Operations exports from Binance API and unpivot them to a readable table
+  # Returns data.frame
+  
+  #input file
+  ops.j <- fromJSON(jsonPath, simplifyVector = T, flatten = T)
+  
+  #liquidityAmount is a 2x2 df and need "unpacking"
+  ops.df <-  ops.j %>% 
+    unnest_longer(col = "liquidityAmount", simplify = T) %>% #duplicate rows (for for each col)
+    unnest_wider(col = "liquidityAmount", simplify = T) %>% # unnest col 'liquidityAmount' into 'asset' and 'amount'
+    subset(status==1) #filters out UNCOMPLETED transaction ("processing")
+  
+  ops.df[,"Date_UTC"] <- ops.df$updateTime %>% msec_to_datetime()
+  
+  # pivot df so to have one 1-entry for each operation
+  ops.df[,"Coin1"] <- str_split_i(ops.df$poolName,pattern = "/", 1) #split and return first coin
+  ops.df[,"Coin2"] <- str_split_i(ops.df$poolName,pattern = "/", 2) #split and return first coin
+  
+  ops.df[,"coinId"] <- ifelse(ops.df$asset==ops.df$Coin1,"1","2")#either 1/2 depending on order in pool
+  
+  ops.wide <- pivot_wider(ops.df, id_cols=c("Date_UTC", "operation", "poolId", "poolName", "shareAmount",  "Coin1", "Coin2"), 
+                          names_from = "coinId", values_from = "amount", names_prefix = "Qnt")
+  
+  #Reorder by date
+  ops.wide <- ops.wide[order(ops.wide$Date_UTC), ]
+  
+  return(ops.wide)
+}
+
+claim.tableInterpreter <- function(jsonPath){
+  # Read LiquidPool Claims exports from Binance API and unpivot them to a readable table
+  # Returns data.frame
+  
+  #input file
+  claim.j <- fromJSON(jsonPath, simplifyVector = T, flatten = T) %>%
+    subset(status==1)
+
+  claim.j[,"claimAmount"] %<>% as.numeric()
+  claim.j[,"Date_UTC"] <- claim.j$claimedTime %>% msec_to_datetime()
+  
+  # pivot the dataframe so to have one 1-entry for each operation 
+  #> instead than 3: Coin1/Coin2/BonusReward
+  claim.j[,"Coin1"] <- str_split_i(claim.j$poolName,pattern = "/", 1) #split and return first coin
+  claim.j[,"Coin2"] <- str_split_i(claim.j$poolName,pattern = "/", 2) #split and return first coin
+  
+  # COIN 3: some pools also have extra rewards collected as Coin3 (usually, BNB)
+  #> steps below allow to recover the name of coin3
+  poolCoins <- claim.j[1,"poolName"] %>% str_split(pattern = "/") %>% unlist()
+  
+  Coin3 <- unique(claim.j$assetRewards) %>% 
+    setdiff(c(poolCoins)) #remove known coins
+  
+  claim.j[,"Coin3"] <- ifelse(length(Coin3)==0, NA, Coin3) #if no Coin3, set to NA
+  
+  # Assign Coin number [1/2/3]
+  claim.j[claim.j$assetRewards==claim.j$Coin1, "coinId"] <- "1"
+  claim.j[claim.j$assetRewards==claim.j$Coin2, "coinId"] <- "2"
+  claim.j[claim.j$assetRewards==claim.j$Coin3, "coinId"] <- "3"
+  
+  # pivot_wider
+  claim.wide <- pivot_wider(claim.j, id_cols=c("Date_UTC", "poolId", "poolName", "status", "Coin1", "Coin2", "Coin3"), 
+                            names_from = "coinId", values_from = "claimAmount", names_prefix = "claimed",
+                            values_fn = sum) #define what to do in case of multiple value for the same name (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
+  
+  claim.wide <- claim.wide[order(claim.wide$Date_UTC), ]
+
+  return(claim.wide)
+}
+
+
 getPrice <- function(price_df, coin, refCoin="USDT"){
   #> scan the price_df dataframe for symbol COINUSDT or USDTCOIN respectively.
   #> Returns price expressed in 'refCoin'
@@ -143,7 +213,6 @@ getPrice <- function(price_df, coin, refCoin="USDT"){
     message(sprintf("'%s' [%s/%s] price was not found into provided 'price_df'", coin, symbol_for, symbol_rev))
     return(NA)}
 }
-
 
 
 datetime_to_sec <- function(datetime, format="sec", tz="UTC"){
