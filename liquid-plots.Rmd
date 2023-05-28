@@ -42,7 +42,11 @@ options(scipen=999) #scientific notation threshold
 ```{r dirs and functions, include=FALSE}
 # IMPORT: download of ORIGINAL data only 
 dir.IN <- 'DOWNLOADS/' %T>% dir.create(showWarnings = F)
-dir.IN.pools <- paste0(dir.IN, "SinglePools/")  %T>% dir.create(showWarnings = F)
+dir.IN.single <- paste0(dir.IN, "SinglePools/")  %T>% dir.create(showWarnings = F)
+
+dir.TABLES <- 'TABLES/' %T>% dir.create(showWarnings = F)
+dir.TABLES.single <-  paste0(dir.TABLES, "SinglePools/") %T>% dir.create(showWarnings = F)
+
 dir.OUT <- 'OUTPUTS/' %T>% dir.create(showWarnings = F)
 
 #for reference:
@@ -55,7 +59,7 @@ source("functions.R")
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -107,7 +111,7 @@ Data will be recovered from [`r API_root`] using the following credentials:\
 ### DOWNLOAD Binance Data [API]
 
 for info, refer to see: https://binance-docs.github.io/apidocs/spot/en/#change-log\
-Download to: `r dir.IN.pools`\
+Download to: `r dir.IN.single`\
 Download to: `r dir.IN`\
 
 ***
@@ -124,7 +128,7 @@ if(run_api){
   price.j <- BINANCE.GET(API_root, "/api/v3/ticker/price") #download Binance latest Prices
   
   write_json(price.j, price.j.path, auto_unbox=TRUE) #export
-  cat("\t> saved to: ", price.j.path, "\n")
+  cat("\t-> saved to: ", price.j.path, "\n")
   
   price.df <- fromJSON(price.j.path, simplifyVector = TRUE,
                      flatten = TRUE) #automatically UN-Nest nested columns
@@ -137,129 +141,49 @@ if(run_api){
 
 ***
 #### GET: LIQUIDITY POSITIONS (Currently active)
-Latest data about currently active pool and their Coin compositon. 
+Latest data about currently active pool and their Coin composition. 
 
 ```{r liquidity-now, results="hold"}
 if(run_api){
   # DOWNLOAD
-  liquidity.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidity", timestamp = TRUE, sign = TRUE) 
+  liq.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidity", timestamp = TRUE, sign = TRUE) 
   
   # JSON EXPORT
-  liquidity.j.path <- paste0(dir.IN, "API_liquidity.json")
-  write_json(liquidity.j, liquidity.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS
-  cat(sprintf("\t-> export to: %s\n", liquidity.j.path))
-  
-  # CSV CONVERSION
-  liq.df <- fromJSON(liquidity.j.path, simplifyVector = TRUE,
-                     flatten = TRUE) #automatically UN-Nest nested columns
-              
-  write.csv2(liq.df, file = str_replace(liquidity.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
-  cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
-              str_replace(liquidity.j.path, pattern = ".json", "_unpacked.csv"), nrow(liq.df)))
+  liq.j.path <- paste0(dir.IN, "API_liq.json")
+  write_json(liq.j, liq.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS
+  cat(sprintf("\t-> export to: %s\n", liq.j.path))
   
   # TABLE INTERPRETATION
   #> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
-  activePools.df <- liquidity.tableInterpreter(liquidity.j.path) 
-  activePools.df.path <- paste0(dir.OUT, "ActivePools.csv")
+  liq.df <- liquidity.tableInterpreter(liq.j.path) 
   
-  write.csv2(activePools.df, activePools.df.path, row.names = F)
-  cat(sprintf("\tACTIVE POOLS\t-> export to: %s (%s rows)\n", activePools.df.path, nrow(activePools.df)))
-}else{cat("SKIPPED\n")}
-```
-
-**TEMP REMOVE LATER**
-
-```{r temp-1, hide=FALSE}
-if(run_api){
-activePools.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX", activePools.df$poolName))
-}else{cat("SKIPPED\n")}
-```
-
-
-```{r pools-lists, include=FALSE}
-if(run_api){
-  # LISTS of all POOLS/COINS
-  poolId_list <- unique(activePools.df$poolId) #all unique poolId
-  poolNames_list <- unique(activePools.df$poolName) #unique poolNames
+  # TEMP WORKAROUND
+          message("FITER APPLIED: only selected pools are kept")            #TEMP
+          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX", liq.df$poolName))  #TEMP
   
-  # unique coins (to fetch prices)
-  coinList <- poolNames_list %>% str_split("/") %>% unlist() %>% 
-    c("BNB") %>% #add BNB, as this will be needed for extraRewards calculations
-    unique()
+  liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
+  write.csv2(liq.df, liq.df.path, row.names = F)
+  cat(sprintf("\tUNPACKED INTO .CSV\t-> export to: %s (%s rows)\n", liq.df.path, nrow(liq.df)))
+  
 }else{cat("SKIPPED\n")}
 ```
 
 #### PLOT: ACTIVE POOLS
 found `r ifelse(run_api, length(poolNames_list), "X")` pools:
 
-```{r pools-value, include=FALSE}
-if(run_api){
-  # EXTRACTS PRICES for the relevant coins
-  priceMatrix <- data.frame()
-  refCoin = "USDT"
-  
-  for (c in coinList){
-    priceMatrix[c,refCoin] <- getPrice(price.df, c, refCoin = refCoin) %>% as.numeric()}
-  
-  activePools.df[,"Price"] <- priceMatrix[activePools.df$Coin, refCoin] #recover price from priceMatrix
-  activePools.df[,"Value"] <- with(activePools.df, share.asset*Price)
-  activePools.df[,"Currency"] <- refCoin
-}else{cat("SKIPPED\n")}
-```
-
-
-```{r active-calc, include=FALSE}
-if(run_api){
-
-# RENAME and CALC Coin1/Coin2 var
-activePools.df_calc <- data.frame(
-  poolId = activePools.df$poolId,
-  poolName = activePools.df$poolName,
-  Date_Unix = activePools.df$updateTime,
-  Date_UTC = activePools.df$updateTime %>% msec_to_datetime(),
-  Coin1 = str_split_i(activePools.df$poolName,pattern = "/", 1), #split and return first coin
-  Coin2 = str_split_i(activePools.df$poolName,pattern = "/", 2), #split and return second coin
-  Qnt = activePools.df$share.asset,
-  coinName = activePools.df$Coin,
-  Value = activePools.df$Value,
-  Currency = activePools.df$Currency
-  )
-
-# UNPIVOT table
-#1. assign "label" Coin1/Coin2
-activePools.df_calc[,"coinID"] <- ifelse(activePools.df_calc$coinName==activePools.df_calc$Coin1, "1", "2")
-
-#2. pivot wider
-activePools.df_calc2 <- pivot_wider(activePools.df_calc,
-                              id_cols = c("Date_Unix", "poolId", "poolName", "Coin1", "Coin2", "Currency"), #columns to keep 
-                              names_from = "coinID",  names_sep = "", values_from = c("Qnt", "Value") )
-
-#3. Value TOT
-activePools.df_calc2[,"Value_TOT"] <-  with(activePools.df_calc2, Value1+Value2)
-
-# REODER and DROP intermediate calc. columns
-activePools.DF <- activePools.df_calc2[order(activePools.df_calc2$Value_TOT, decreasing = T),#order by value_TOT (HIGH)
-                                       c("poolId","poolName","Date_Unix", #re-order columns
-                                         "Coin1","Qnt1","Value1",
-                                         "Coin2","Qnt2","Value2",
-                                         "Value_TOT", "Currency")]
-
-}else{cat("SKIPPED\n")}
-```
-
-
 ```{r active-pools}
 if(run_api){
   
+  activePools.df[,"Date_UTC"] <- msec_to_datetime(activePools.df$updateTime)
+  
   #Print current Pools
-  activePools.DF %>% 
-    subset(select = c("poolName", "poolId", "Qnt1", "Coin1", "Qnt2", "Coin2", "Value_TOT", "Currency")) %>% #select useful col.
-    kable(digits = c(rep(4,6),2,2), align= c("c","c","r","l","r","l","r","l"), 
-          caption = "<b>Currently ACTIVE Pools</b>") %>%
+  activePools.df %>% 
+    subset(select = c("poolName", "poolId", "Date_UTC", "share.Amount")) %>% #select useful col.
+    unique() %>% #filters out duplicated entries (2x for each pool)
+    kable(align= "c", caption = "<b>Currently ACTIVE Pools</b>") %>%
     kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F) %>%
-    column_spec(c(3,4), color="darkblue") %>% 
-    column_spec(c(1,7,8), bold=T) 
-
+    column_spec(c(1), bold=T) 
+  
 }else{cat("SKIPPED\n")}
 ```
 
@@ -271,7 +195,10 @@ _only data from the pools above is downloaded_
 
 
 ```{r singlePools, results="hold"}
-# MAX trx x pool is 100. Use pagination if more is required (not recommended)
+# MAX trx x pool is 100. Use pagination if more is required (may be required for Claims)
+
+poolId_list <- unique(activePools.df$poolId) #all unique poolId
+poolNames_list <- unique(activePools.df$poolName) #unique poolNames
 
 if(run_api){
   
@@ -280,14 +207,14 @@ if(run_api){
     id <- poolId_list[n]
     pName <- poolNames_list[n]
     
-    cat(sprintf("\n\tPool: %s (poolId=%s)", pName, id))
+    cat(sprintf("\n\tPool: %s (poolId=%s)\n", pName, id))
     
     #POOL OPERATIONS
     ops.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/liquidityOps", 
                        API_param = paste0("limit=100&poolId=",id),
                        timestamp = TRUE, sign = TRUE) 
     
-    ops.j.path <- paste0(dir.IN.pools, id, "_ops.json")
+    ops.j.path <- paste0(dir.IN.single, id, "_ops.json")
     write_json(ops.j, ops.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
     
     #CLAIMED DATA
@@ -295,7 +222,7 @@ if(run_api){
                        API_param = paste0("type=1&limit=100&poolId=",id), #type 0/1 = pending/successful
                        timestamp = TRUE, sign = TRUE) 
     
-    claim.j.path <- paste0(dir.IN.pools, id, "_claim.json")
+    claim.j.path <- paste0(dir.IN.single, id, "_claim.json")
     write_json(claim.j, claim.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
   }
   
@@ -303,81 +230,180 @@ if(run_api){
 ```
 
 
+```{r cleanup1}
+var_all <- ls()
+var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run", value=T),
+              lsf.str()) # all functions names, also considered variables
+var_rm <- setdiff(var_all,var_keep)              
+rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
+```
+
+
 ### Part 2: DATA ANALYSIS
 
-
 ```{r analysis-init}
+# VARIABLES and DF that need to be re-imported before running Part 2
 if(run_api==FALSE){
-  #LIST OF VARIABLES THAT NEED BEING REINPORTED BEFORE ANALSYSIS
-}
+  price.df <- read.csv2(paste0(dir.IN,"API_price_unpacked.csv"))
+  liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
+  }
+  
+# Useful lists
+poolId_list <- unique(liq.df$poolId) #all unique poolId
+poolNames_list <- unique(liq.df$poolName) #unique poolNames
+  
+# unique coins (to fetch prices)
+coinList <- poolNames_list %>% str_split("/") %>% unlist() %>% 
+  c("BNB") %>% #add BNB, as this will be needed for extraRewards calculations
+  unique()
 ```
+
+#### Price Matrix
+
+```{r price-matrix, include=FALSE}
+if(run_analysis){
+  # EXTRACTS PRICES for the relevant coins
+  priceMatrix <- data.frame()
+  refCoin = "USDT"
+  
+  for (c in coinList){
+    priceMatrix[c,refCoin] <- getPrice(price.df, c, refCoin = refCoin) %>% as.numeric()}
+
+}else{cat("SKIPPED\n")}
+```
+
+
+#### Active Pools DATA
+
+THE MODULE BELOW SHOULD GO TO ANALYTICS
+probably also the one about prices
+```{r active-calc}
+if(run_analysis){
+  # Assign price value to each coin
+  liq.df[,"Price"] <- priceMatrix[liq.df$Coin, refCoin] #recover price from priceMatrix
+  liq.df[,"Value"] <- with(liq.df, share.asset*Price)
+  liq.df[,"Currency"] <- refCoin
+  
+  # RENAME and CALC Coin1/Coin2 var
+  active.calc <- data.frame(
+      poolId = liq.df$poolId,
+      poolName = liq.df$poolName,
+      Date_Unix = liq.df$updateTime,
+      Date_UTC = liq.df$updateTime %>% msec_to_datetime(),
+      share.Amount = liq.df$share.Amount %>% as.numeric(),
+      Coin1 = str_split_i(liq.df$poolName,pattern = "/", 1), #split and return first coin
+      Coin2 = str_split_i(liq.df$poolName,pattern = "/", 2), #split and return second coin
+      Qnt = liq.df$share.asset,
+      coinName = liq.df$Coin,
+      Value = liq.df$Value,
+      Currency = liq.df$Currency
+      )
+    
+  # UNPIVOT table
+  #1. assign "label" Coin1/Coin2
+  active.calc[,"coinID"] <- ifelse(active.calc$coinName==active.calc$Coin1, "1", "2")
+  
+  #2. pivot wider
+  active.calc2 <- pivot_wider(active.calc,
+                              id_cols = c("Date_Unix", "poolId", "poolName", "share.Amount", "Coin1", "Coin2", "Currency"), #columns to keep 
+                              names_from = "coinID",  names_sep = "", values_from = c("Qnt", "Value") )
+  
+  #3. Value TOT
+  active.calc2[,"Value_TOT"] <-  with(active.calc2, Value1+Value2)
+  
+  # REODER and DROP intermediate calc. columns
+  active.DF <- active.calc2[order(active.calc2$Value_TOT, decreasing = T),#order by value_TOT (HIGH)
+                             c("poolId","poolName","Date_Unix","share.Amount", #re-order columns
+                               "Coin1","Qnt1","Value1",
+                               "Coin2","Qnt2","Value2",
+                               "Value_TOT", "Currency")]
+  
+  write.csv2(active.DF, paste0(dir.TABLES, "ActivePools.csv"), row.names = F)
+  
+  
+  #FANCY PLOT
+  #Print current Pools
+  active.DF %>% 
+    subset(select = c("poolName", "poolId", "share.Amount", "Qnt1", "Coin1", "Qnt2", "Coin2", "Value_TOT", "Currency")) %>% #select useful col.
+    kable(digits = c(2,2,2,4,4,4,4,2,2), align= c("c","c","r","r","l","r","l","r","l"), 
+          caption = "<b>Currently ACTIVE Pools</b>") %>%
+    kable_styling(bootstrap_options = c("striped", "condensed"), full_width = F) %>%
+    column_spec(c(4,5), color="darkblue") %>% 
+    column_spec(c(1,8,9), bold=T) 
+  
+
+}else{cat("SKIPPED\n")}
+```
+
 
 
 ```{r analysis-ops}
-list.files(dir.IN.pools)
+# Import JASON from "/DOWNLOAD/SinglePools/"
+# Export data as unpivoted .csv into "/TABLES/SinglePools/"
+# Finally, check if previous data are available and, if so, append new data (HISTORY)
 
-id <- 149
-ops.path <- paste0(dir.IN.pools,id,"_ops.json")
-
-ops.j <- fromJSON(ops.path, simplifyVector = T, flatten = T)
-
-#liquidityAmount is a 2x2 df and need "unpacking"
-ops.df <-  ops.j %>% 
-  unnest_longer(col = "liquidityAmount", simplify = T) %>% #duplicate rows (for for each col)
-  unnest_wider(col = "liquidityAmount", simplify = T) %>% # unnest col 'liquidityAmount' into 'asset' and 'amount'
-  subset(status==1) #filters out UNCOMPLETED transaction ("processing")
-
-ops.df[,"Date_UTC"] <- ops.df$updateTime %>% msec_to_datetime()
-
-# pivot df so to have one 1-entry for each operation
-ops.df[,"Coin1"] <- str_split_i(ops.df$poolName,pattern = "/", 1) #split and return first coin
-ops.df[,"Coin2"] <- str_split_i(ops.df$poolName,pattern = "/", 2) #split and return first coin
-
-ops.df[,"coinId"] <- ifelse(ops.df$asset==ops.df$Coin1,"1","2")#either 1/2 depending on order in pool
-
-ops.wide <- pivot_wider(ops.df, id_cols=c("Date_UTC", "operation", "poolId", "poolName", "Coin1", "Coin2"), 
-                      names_from = "coinId", values_from = "amount", names_prefix = "Qnt")
-
-#Reorder by date
-ops.wide <- ops.wide[order(ops.wide$Date_UTC), ]
-
-#EXPORT SOMEWHERE
-
-
-
-# EXTRACT data from LAST operation. it MUST be ADD
-#> other options are not supported yet
-last_ops <- ops.wide %>% tail(1)
-
-#sanity check
-if (last_ops[1,"operation"]=="REMOVE"){
-  print(ops.wide)
-  stop("Error: pools with multiple ADD/REMOVE operatio nare currently NOT supported (In progress)")}
-
-last_ops.date <- last_ops[1,"Date_UTC", drop=T]
-
-
-
-
-
-
-#PLACE HOLDER for later
 if(run_analysis){
-  # TABLE INTERPRETATION
-  ops.df <- fromJSON(ops.j.path, simplifyVector = TRUE,
-                     flatten = TRUE) #automatically UN-Nest nested columns
   
-  op.df2 <- unnest_longer(ops.df, col = "liquidityAmount", simplify = T)
-  op.df3 <- unnest_wider(op.df2, col = "liquidityAmount", simplify = T)
-  
-  cat(sprintf("\tCONVERTED TO .CSV\t-> export to: %s (%s rows)\n", 
-              str_replace(ops.j.path, pattern = ".json", "_unpacked.csv"), nrow(ops.df)))
-  write.csv2(op.df3, file = str_replace(ops.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)
+  for(id in poolId_list){
+    # PATHS
+    ops.j.path <- paste0(dir.IN.single,id,"_ops.json")
+    ops.table.path <- paste0(dir.TABLES.single,id,"_ops.csv")
+    claim.j.path <- paste0(dir.IN.single,id,"_claim.json")
+    claim.table.path <- paste0(dir.TABLES.single,id,"_claim.csv")
+    snap.table.path <- paste0(dir.TABLES.single,id,"_snapshots.csv")
+    
+    # INTEPRET
+    ops_DF <- ops.tableInterpreter(ops.j.path)
+    write.csv2(ops_DF, ops.table.path, row.names = F) # EXPORT
+    
+    # CLAIMED DATA
+    claim_DF <- claim.tableInterpreter(claim.j.path)
+    write.csv2(claim_DF, claim.table.path, row.names = F) # EXPORT
+    
+    # Last Pool Balance (SNAPSHOT)
+    snap_DF <-  subset(active.DF, poolId==id)
+    write.csv2(snap_DF, snap.table.path, row.names = F) # EXPORT
+  }
+
 }
 ```
 
+>>>>> CONTINUE FROM HERE <<<<<
+```{r analysis-join}
+# This can be done as a RE-IMPORT, immediately before PLOTTING? To consider
 
-```{r liq.operations}
+#> Last operation MUST be ADD
+#> other options are not supported yet
+if (tail(ops_DF,1)[1,"operation"]=="REMOVE"){ 
+  print(ops_DF)
+  stop("Error: pools with multiple ADD/REMOVE operatio nare currently NOT supported (In progress)")}
+
+# LAST OPS
+ops.last <- ops_DF %>% tail(1)# required to recover Claimed data (ops.last.date)
+ops.last.date <- ops.last[1,"Date_UTC", drop=T]
+
+# Last CLAIM
+claim.last <- subset(claim_df, Date_UTC > ops.last.date)
+
+#calculate cumulData
+claim.last <- replace_na(claim_DF, replace = list(claimed1=0, claimed2=0, claimed3=0)) #replace NA with 0
+claim.last[,"Cumul1"] <- cumsum(claim_DF[,"claimed1"])
+claim.last[,"Cumul2"] <- cumsum(claim_DF[,"claimed2"])
+claim.last[,"Cumul3"] <- cumsum(claim_DF[,"claimed3"])
+
+# Last DATA
+liq.last <- subset(activePools.DF, poolId==id)
+
+# MERGE TOGETHER (?)
+
+
+
+ops.last
+claim.last
+
+
+
+
 ```
 
 ```{r}
