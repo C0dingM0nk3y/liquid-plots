@@ -53,7 +53,6 @@ BINANCE.GET <- function(API_root,
 }
 
 
-
 liquidity.tableInterpreter <- function(jsonPath){
   #> Import json fine and recover data from nested lists (pivot_longer)
   #> Returns df
@@ -145,3 +144,23 @@ getPrice <- function(price_df, coin, refCoin="USDT"){
     return(NA)}
 }
 
+
+
+datetime_to_sec <- function(datetime, format="sec", tz="UTC"){
+  # tz = "UTC", same as "GMT". Local: "CEST" same as "Europe/Belin"
+  numDate <- datetime %>% as_datetime(tz = tz) %>% as.numeric()
+  if (format =="sec"){return(numDate)}
+  else if (format =="msec"){return(numDate*1000)}
+  else{message(sprintf("ERROR processing %s: format allowed are 'sec' and 'msec'. Please select one."))}}
+
+datetime_to_msec <- function(datetime, format="msec", tz="UTC"){
+  datetime_to_sec(datetime, format, tz)} #as the above, default to msec
+
+sec_to_datetime <- function(time_s, format="sec", tz="UTC"){
+  if (format =="msec"){time_s <- time_s /1000}
+  else if (format =="sec"){time_s <- time_s}
+  else{message(sprintf("ERROR processing %s: format allowed are 'sec' and 'msec'. Please select one."))}
+  return(as_datetime(time_s, tz = tz))}
+
+msec_to_datetime <- function(datetime, format="msec", tz="UTC"){
+  sec_to_datetime(datetime, format, tz)} #as the above, default to 
