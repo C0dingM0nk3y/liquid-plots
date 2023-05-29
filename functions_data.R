@@ -173,6 +173,45 @@ claim.tableInterpreter <- function(jsonPath){
 }
 
 
+activePools.Calc <- function(liq.df){
+  #> wrapper to pivot and perform calculations on liq.df dataframe
+  #> liq.df is the native format of Binance API export file [liquidity.json]
+  
+  # RENAME and CALC Coin1/Coin2 var
+  active.calc <- data.frame(
+    poolId = liq.df$poolId,
+    poolName = liq.df$poolName,
+    Date_Unix = liq.df$updateTime,
+    Date_UTC = liq.df$updateTime %>% msec_to_datetime(),
+    share.Amount = liq.df$share.Amount %>% as.numeric(),
+    Coin1 = str_split_i(liq.df$poolName,pattern = "/", 1), #split and return first coin
+    Coin2 = str_split_i(liq.df$poolName,pattern = "/", 2), #split and return second coin
+    Qnt = liq.df$share.asset,
+    coinName = liq.df$Coin,
+    Value = liq.df$Value,
+    Currency = liq.df$Currency
+  )
+  
+  # UNPIVOT table
+  #1. assign "label" Coin1/Coin2
+  active.calc[,"coinID"] <- ifelse(active.calc$coinName==active.calc$Coin1, "1", "2")
+  
+  #2. pivot wider
+  active.calc2 <- pivot_wider(active.calc,
+                              id_cols = c("Date_Unix", "Date_UTC", "poolId", "poolName", "share.Amount", "Coin1", "Coin2", "Currency"), #columns to keep 
+                              names_from = "coinID",  names_sep = "", values_from = c("Qnt", "Value") )
+  
+  #3. Value TOT
+  active.calc2[,"Value_TOT"] <-  with(active.calc2, Value1+Value2)
+  
+  # REODER and DROP intermediate calc. columns
+  active.DF <- active.calc2[order(active.calc2$Value_TOT, decreasing = T),#order by value_TOT (HIGH)
+                            c("poolId","poolName","Date_Unix","Date_UTC","share.Amount", #re-order columns
+                              "Coin1","Qnt1","Value1",
+                              "Coin2","Qnt2","Value2",
+                              "Value_TOT", "Currency")]
+}
+
 getPrice <- function(price_df, coin, refCoin="USDT"){
   #> scan the price_df dataframe for symbol COINUSDT or USDTCOIN respectively.
   #> Returns price expressed in 'refCoin'
