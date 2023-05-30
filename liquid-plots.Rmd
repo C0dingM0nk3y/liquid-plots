@@ -61,7 +61,7 @@ source("functions_plots.R")
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -176,7 +176,7 @@ if(run_api){
 ```
 
 #### PLOT: ACTIVE POOLS
-found `r ifelse(run_api, length(poolNames_list), "X")` pools:
+found `r ifelse(run_api, length(unique(liq.df$poolName)), "X")` pools:
 
 ```{r active-pools}
 if(run_api){
@@ -203,11 +203,11 @@ _only data from the pools above is downloaded_
 
 ```{r singlePools, results="hold"}
 # MAX trx x pool is 100. Use pagination if more is required (may be required for Claims)
-
-poolId_list <- unique(liq.df$poolId) #all unique poolId
-poolNames_list <- unique(liq.df$poolName) #unique poolNames
-
 if(run_api){
+
+  poolId_list <- unique(liq.df$poolId) #all unique poolId
+  poolNames_list <- unique(liq.df$poolName) #unique poolNames
+
   
   for (n in 1:length(poolId_list)){
     #POOL-NAME
@@ -320,13 +320,14 @@ if(run_analysis){
 }else{cat("SKIPPED\n")}
 ```
 
-#### Single Pools DATA
+#### Database Update (SINGLE pools)
 
-Import JASON from "/DOWNLOAD/SinglePools/"\
-Export data as unpivoted .csv into "/TABLES/SinglePools/"\
-Finally, check if previous data are available and, if so, append new data (HISTORY)\
+For each pool that is currently active:
+- Import JASON from "/DOWNLOAD/SinglePools/"\
+- Export data as _unpivoted.csv into "/TABLES/SinglePools/"\
+- Finally, check if previous data are available and, if so, append new data (HISTORY)\
 
->>> Consider a wrapper <<<
+> [ ] Consider wrapping the module below into a function. *Or also, not*
 
 ```{r analysis-ops}
 # Import JASON from "/DOWNLOAD/SinglePools/"
@@ -358,12 +359,11 @@ if(run_analysis){
     
     # Last Pool Balance (SNAPSHOT)
     snap_DF <-  subset(active.DF, poolId==id)
-    #write.csv2(snap_DF, snap.table.path, row.names = F) # EXPRT? ACTUALLY only HIST is needed
-    #cat(sprintf("\t snapshots.csv (%s rows)", nrow(snap_DF))) #this feedback is useless because it is always 1 row
     
     # Update/Crete HISTORY file (Snapshots)
     if (file.exists(snap.history.path)){
-      snap_prev <- read.csv2(snap.history.path)} #import prev history
+      snap_prev <- read.csv2(snap.history.path) #import prev history
+      snap_prev[, "Date_UTC"] %<>% as.POSIXct(tz="UTC")}
     else{snap_prev <- snap_DF} #...or replace it with latest data
     
     snap_merge <- bind_rows(list(snap_prev, snap_DF)) #merge with latest data 
@@ -388,120 +388,25 @@ Naaaa! Better
 3x functions <- claimAnalysis(path, startDate) -> returns CALC
                 [...]
                 Then run Plot functions directly
+                
+### Plots.byPool{.tabset}
+Click on tab below to select the pool to visualize
 
-```{r analysis-join}
-# This can be done as a RE-IMPORT, immediately before PLOTTING? To consider
+***
 
-# Maybe a function, whose imput is poolID?
-
-id = 33
-
-# IMPORT snap_H/ops/claim
-ops.table.path <- paste0(dir.TABLES.single,id,"_ops.csv")
-claim.table.path <- paste0(dir.TABLES.single,id,"_claim.csv")
-snap.history.path <- paste0(dir.TABLES.single,id,"_snapshots.History.csv")
-refData.path <- paste0(dir.REF.single,id,"_refData.csv")
-
-ops_H <- read.csv2(ops.table.path) #REPLACE WITH HIST FILE
-ops_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-
-claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
-claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-
-snap_H <- read.csv2(snap.history.path)
-snap_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-
-
-# POOL INFO ####
-poolName <- snap_H[1,"poolName", drop=T]
-coin1 <- snap_H[1,"Coin1", drop=T]
-coin2 <- snap_H[1,"Coin2", drop=T]
-coin3 <- claim_H[1,"Coin3", drop=T] # coin 3 is recovered from claim_CALC
-
-# CURRENT MARKET DATA ####
-price1 <- priceMatrix[coin1,refCoin]
-price2 <- priceMatrix[coin2,refCoin]
-price3 <- priceMatrix[coin3,refCoin]
-
-# STARTPOINT CALCULATIONS  ####
-#> All calc related to current (final) state of Pool
-#>> NOTE: in current implementation, it is expected for the LAST operation to be a ADD. 
-#>> Future implementation will be able to interpret more complex (multi ADD/RMOVE) operation, 
-#>> for now it is only plotting results from LAST operation
-ops.last <- ops_H %>% tail(1)# required to recover Claimed data (ops.last.date)
-#sanity check
-if (ops.last[1,"operation"]=="REMOVE"){ 
-  print(ops_H)
-  stop("Error: pools with multiple ADD/REMOVE operations are currently NOT supported (In progress)")}
-
-#extract data
-start_date <- ops.last[1,"Date_UTC", drop=T]
-start_qnt1 <- ops.last[1,"Qnt1", drop=T] %>% as.numeric()
-start_qnt2 <- ops.last[1,"Qnt2", drop=T] %>% as.numeric()
-
-start_value <- (start_qnt1*price1) + (start_qnt2*price2)
-
-#this is the most important param, as it define the center point for the IL plots.
-entryRatio <- start_qnt1/start_qnt2
-entryPrice <- 1/entryRatio
-
-# SNAPSHOTS-HISTORY (used to rebuild price section)  ####
-snap_H[,"PoolRatio"] <- with(snap_H, Qnt1/Qnt2) 
-snap_H[,"PoolPrice"] <- 1/snap_H$PoolRatio
-snap_H[,"PriceChange"] <- with(snap_H, PoolPrice/entryPrice) 
-
-# CLAIM CALCULATIONS ####
-#> scan the full history of pool claims, and FILTER for those that happened AFTER 'poolStart' date
-
-claim_CALC <- subset(claim_H, Date_UTC > start_date)
-
-#calculate cumulData
-claim_CALC %<>% replace_na(replace = list(claimed1=0, claimed2=0, claimed3=0)) #replace NA with 0
-claim_CALC[,"Cum_Qnt1"] <- cumsum(claim_CALC[,"claimed1"])
-claim_CALC[,"Cum_Qnt2"] <- cumsum(claim_CALC[,"claimed2"])
-claim_CALC[,"Cum_Qnt3"] <- cumsum(claim_CALC[,"claimed3"])
-
-#calculate Cumul%, expressed as %of new coin earned copared to start_qnt
-#> this is only calculated on coin1/coin2)
-claim_CALC[,"Cum_%1"] <- claim_CALC[,"Cum_Qnt1"]/start_qnt1
-claim_CALC[,"Cum_%2"] <- claim_CALC[,"Cum_Qnt2"]/start_qnt2
-
-#Converts to Value
-claim_CALC[,"Cum_Val1"] <- claim_CALC[,"Cum_Qnt1"]*price1
-claim_CALC[,"Cum_Val2"] <- claim_CALC[,"Cum_Qnt2"]*price2
-claim_CALC[,"Cum_Val3"] <- claim_CALC[,"Cum_Qnt3"]*price3
-
-#Total Earn: Value and %
-claim_CALC[,"Cum_ValTOT"] <- with(claim_CALC, (Cum_Val1+Cum_Val2+Cum_Val3))
-claim_CALC[,"Cum_%ValTOT"] <- with(claim_CALC, Cum_ValTOT/start_value)
-
-
-
-# ENDPOINTS CALCULATIONS ####
-#> All calc related to current (final) state of Pool
-
-end_date <- max(claim_CALC$Date_UTC, snap_H$Date_UTC)
-
-# [Optional] REFDATA ####
-
-if (file.exists(refData.path)){
-  pool_REF <- read.csv2(refData.path) %>% 
-    subset(Date_UTC > start_date) #filter
+```{r results='asis'}
+for (id in poolId_list){
+  source("script_plotPool_v0.R") # makes calc
   
-  pool_REF[order(pool_REF$updateTime), ]
-  pool_REF[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC")
+  cat(sprintf("#### %s <br>\n", poolName))
+  cat("<div>\n")
+  plot_trends <- LiqPlots_Trends() #plot1
+  print(plot_trends)
+  cat("</div>\n")
   
-}else{pool_REF <- FALSE}
+  cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
+  }
 
 ```
 
-Plot INPUTS
-none? take needed info from Global?
-
-
-```{r plots}
-plot_trends <- LiqPlots_Trends()
-
-plot_trends
-```
 
