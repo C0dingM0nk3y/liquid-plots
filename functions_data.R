@@ -144,7 +144,10 @@ claim.tableInterpreter <- function(jsonPath){
   
   #input file
   claim.j <- fromJSON(jsonPath, simplifyVector = T, flatten = T) %>%
-    subset(status==1)
+    subset(status==1) %>%
+    unique() #this is important in case of joined JSON from multiple API calls: 
+             #> they ALWAYS have some duplicated entry at the interface between file 1 and 2 
+             #> this is because of the reason data is downloaded)
 
   claim.j[,"claimAmount"] %<>% as.numeric()
   claim.j[,"Date_UTC"] <- claim.j$claimedTime %>% msec_to_datetime()

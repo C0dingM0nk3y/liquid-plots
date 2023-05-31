@@ -10,6 +10,16 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ---
 
+# {.tabset}
+
+```{r code_folding="none"}
+#RUN OPTIONS
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+run_analysis = TRUE
+run_plots = TRUE
+```
+
+
 ```{r init, include=FALSE}
 #If not installed yet, install pacman package manager by "uncommenting" the line below
 #install.packages("pacman")
@@ -25,19 +35,13 @@ pacman::p_load('magrittr')
 pacman::p_load('stringr')
 pacman::p_load("tidyverse")
 #pacman::p_load("data.table")
-pacman::p_load('kableExtra')
 pacman::p_load("lubridate")
 
-#> Plotting
+#> Data visualization
+pacman::p_load('kableExtra')
 pacman::p_load("ggplot2")
 pacman::p_load("ggrepel")
-
-
-#> Data visualization
-#pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
-
-# REMOVE
-#pacman::p_load("readxl")
+pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
 
 #general options
 options(digits = 12) #max decimal digits
@@ -60,15 +64,6 @@ dir.REF.single <-  paste0(dir.REF, "SinglePools/") %T>% dir.create(showWarnings 
 
 source("functions_data.R")
 source("functions_plots.R")
-```
-
-# {.tabset}
-
-```{r code_folding="none"}
-#RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
-run_analysis = TRUE
-run_plots = TRUE
 ```
 
 ---
@@ -201,13 +196,16 @@ if(run_api){
 
 ---
 
-#### GET: HISTORICAL POOLDATA 
+#### GET: HISTORICAL POOLDATA
 This includes Pool Operations (ADD/REMOVE) and Rewards Claims
 _only data from the pools above is downloaded_
 
 
 ```{r singlePools, results="hold"}
 # MAX trx x pool is 100. Use pagination if more is required (may be required for Claims)
+
+max_iter = 10 #so far, only applies to Claimed. operations does not requires that
+
 if(run_api){
 
   poolId_list <- unique(liq.df$poolId) #all unique poolId
@@ -230,12 +228,41 @@ if(run_api){
     write_json(ops.j, ops.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
     
     #CLAIMED DATA
+    claim.j_list <- list() #for data collection
+    
+    # first ITER
     claim.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/claimedHistory", 
                        API_param = paste0("type=1&limit=100&poolId=",id), #type 0/1 = pending/successful
                        timestamp = TRUE, sign = TRUE) 
+    claim.j_list[1] <- list(claim.j) #claim.j is already a list (1:100). This step creates a list of list.
+    
+    # more ITER, if required
+    for (n in 1:max_iter){
+      if (max_iter==0){break} #allow to break loop in case this is desirable (e.g. quick update)
+      
+      last_claim <- claim.j_list[[n]]
+      if (length(last_claim)==100){ #that means that data reached limit (100) and need a separate API call to prev. one
+        lastTimestamp <- last_claim[[100]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
+        
+        cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
+        claim.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/claimedHistory", timestamp = TRUE, sign = TRUE,
+                         API_param = paste0("type=1&limit=100&poolId=",id, "&endTime=", lastTimestamp)) 
+                    #Why lastTimestamp and NOT lastTimestamp-1
+                    # > each time stamps has 2-3 rows (one for each coin + extra rewards)
+                    # > there is 2/3 chance that last row of table is incomplete, and miss at least one of the coin. 
+                    # > therefore, it is better to download that again, and the remove duplicate entries in later steps
+        
+        claim.j_list[n+1] <- list(claim.j) #list of list (JSON is 1-100 list)
+      }
+      else{break} #break loop: last claim had less than 100 entries
+    }
+    
+    # List JOIN and EXPORT
+    claim.joined <- unlist(claim.j_list, recursive = F)
     
     claim.j.path <- paste0(dir.IN.single, id, "_claim.json")
-    write_json(claim.j, claim.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
+    write_json(claim.joined, claim.j.path, auto_unbox=TRUE) # export JSON file to /DOWNLOADS/SinglePools/
+    if (length(claim.joined)>100){cat(sprintf("\t\t joined %s entries into single file: %s\n", length(claim.joined), claim.j.path))}
   }
   
 }else{cat("SKIPPED\n")}
@@ -244,7 +271,7 @@ if(run_api){
 
 ```{r cleanup1}
 var_all <- ls()
-var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run", value=T),
+var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run|API|key", value=T),
               lsf.str()) # all functions names, also considered variables
 var_rm <- setdiff(var_all,var_keep)              
 rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
@@ -291,7 +318,7 @@ All prices are expressed in **`r refCoin`**
 #### Active Pools DATA
 Overview of latest pools [currently active]
 
->>>THIS BELO SHOULD GO INTO A FUNCTION<<<
+>>>THIS BELOW SHOULD GO INTO A FUNCTION<<<
 
 ```{r active-calc}
 #> Unpivot active-pools
@@ -408,7 +435,7 @@ Click on tab below to select the pool to visualize
 
 ***
 
-```{r plots results='asis'}
+```{r plots, results='asis'}
 for (id in poolId_list){
   source("script_plotPool_v0.R") # makes calc
   
