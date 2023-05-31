@@ -73,7 +73,7 @@ start_price <- start_DF[1,"PoolPrice", drop=T]
 ## 2.E MERGE to RefData, FILTER, CALC (IL/ROI) ####
 
 ## [optional] MERGE to REFDATA if optional ####
-if (file.exists(refData.path)){
+if (allow_refData & file.exists(refData.path)){
   #has.REFDATA = TRUE
   pool_REF <- read.csv2(refData.path)
   pool_REF[,"operation"] <- "REFDATA"

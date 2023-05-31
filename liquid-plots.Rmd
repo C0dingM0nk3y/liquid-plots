@@ -442,6 +442,8 @@ Click on tab below to select the pool to visualize
 ```{r plots, results='asis', fig.align='center', fig.height=10, fig.width=8}
 setStopLoss <- 0.005 #set desired stop loss for plots
 
+allow_refData = FALSE
+
 for (id in poolId_list){
   source("_SCRIPTS/script_plotPool_v0.R") # makes calc
   
