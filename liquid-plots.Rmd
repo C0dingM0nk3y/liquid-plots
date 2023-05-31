@@ -166,7 +166,7 @@ if(run_api){
   
   # TEMP WORKAROUND
           message("FITER APPLIED: only selected pools are kept")            #TEMP
-          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX|BNB", liq.df$poolName))  #TEMP
+          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX|BNB|FTT", liq.df$poolName))  #TEMP
   
   liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
   write.csv2(liq.df, liq.df.path, row.names = F)
@@ -442,13 +442,15 @@ Click on tab below to select the pool to visualize
 ***
 
 ```{r plots, results='asis'}
+setStopLoss <- 0.005 #set desired stop loss for plots
+
 for (id in poolId_list){
   source("script_plotPool_v0.R") # makes calc
   
   cat(sprintf("#### %s <br>\n", poolName))
   cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
   p1 <- LiqPlots_Trends() #plot1
-  p2 <- LiqPlots_ILChanges() #plot2
+  p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
   cat("</div>\n")
   
   # Arrange plots (pathwork)
@@ -457,7 +459,7 @@ for (id in poolId_list){
   pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
   #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
   
-  pw <- pw + plot_layout(heights = c(4, 6), nrow = 2)
+  pw <- pw + plot_layout(heights = c(6, 6), nrow = 2)
   print(pw)
   
   # Link to Binance pool

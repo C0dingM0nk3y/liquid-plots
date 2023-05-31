@@ -11,15 +11,14 @@ LiqPlots_Trends <- function(nudge=TRUE){
   #> Default is to plot up to +25% ref Price (up) and -25% price (down)
   #> If real data are outside of this range, then it plots 10% above and below min and max
   yLim_offset <- 0.25
-  yLim_up <- max(start_price*(1+yLim_offset), max(pool_LAST$PoolPrice)*1.1)
-  yLim_down <- min(start_price*(1-yLim_offset), min(pool_LAST$PoolPrice)*0.9)
+  yLim_up <- max(start_price*(1+yLim_offset), max(pool_LAST$PoolPrice)*1.1, max(limits_DF$Limit_Price )*1.025)
+  yLim_down <- min(start_price*(1-yLim_offset), min(pool_LAST$PoolPrice)*0.9, min(limits_DF$Limit_Price )*0.975)
   
   # CONVERTS DATES to POSIXct
   pool_LAST[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC")
   
   # OTHER QUICK CALC
-  pool_LAST[,"Label"] <- ifelse(pool_LAST$PriceChange>1, "ABOVE", "BELOW") #USEFUL?
-  
+  pool_LAST[,"Label"] <- ifelse(pool_LAST$PriceChange>1, paste0("Swap to ",coin2), paste0("Swap to ",coin1))
   
   # PLOT
   plot0 <- pool_LAST %>%
@@ -33,26 +32,41 @@ LiqPlots_Trends <- function(nudge=TRUE){
     #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
     xlab("Datetime (UTC)")
   
-  ## 1. ADD: PriceTrends
+  ## 1. ADD: annotations and threshohs (bottom layer)
+  limits_ss <- subset(limits_DF, !(Label_root =="Current")) #enpoints, minus current
+  
   plot1 <- plot0 +
+    geom_hline(yintercept = start_price, linetype="dashed") +
+    geom_hline(yintercept = limits_ss$Limit_Price, linetype="dashed", color= limits_ss$Color) +  #all beside "Current"
+    geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=start_price, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
+                     size=3.5, force = 1, fill= "white", direction="y", nudge_y = -start_price*0.1) 
+    
+  ## 2. ADD: PriceTrends
+  plot2 <- plot1 +
     geom_line(data=pool_LAST, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
     geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
     ylab(poolName)
   
-  ## [Optional] ADD refData
-  if (has.REFDATA){#if not FALSE: var is either FALSE, or a data.frame
-    plot1 <- plot1 +
-      geom_line(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
-      geom_point(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE, shape=21, colour= "black", fill="white")
-  }
+  ## 3. ADD: Endpoints
+    
+  plot3 <- plot2 +
+    geom_point(data=limits_DF, aes(x=xLim_right, y=Limit_Price), color= limits_DF$Color) + #add endpoint as scatterplot
+    geom_label_repel(data=limits_DF, aes(x=xLim_right, y=Limit_Price, label = Label_Extended),
+                     fill= limits_DF$Color, #box col.
+                     color= limits_DF$TextColor,#text col
+                     size = 3.5, #text size
+                     force = 0.2, #repulsion force (avoid 2x labels to get too close) #v3.5: changed from 1
+                     min.segment.length = 0, #segments , this size as not plotted
+                     segment.colour = limits_DF$Color,
+                     segment.linetype = 4, #"dotdash"
+                     direction = "both", # segment direction: "both", "x", "y" #v3.5: changed to x
+                     nudge_x = limits_DF$nudge_x, #v3.5 change: now pushes label to the RIGHT
+                     #nudge_x = -limits_DF$nudge_x, #pushes label to the left
+                     nudge_y = limits_DF$nudge_y #pushes label up/downwards
+    ) 
   
-  ## 2. ADD: annotations (top layer)
-  plot2 <- plot1 +
-    geom_hline(yintercept = start_price, linetype="dashed") +
-    annotate("label", x = xLim_left, y=start_price*1.05, label=as.character(paste0("Entry Price: ",round(start_price,3),"")),
-             size=3.5, hjust=0)
 
-  return(plot2)
+  return(plot3)
 }
 
 LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% that is tolerate for this pool
@@ -66,9 +80,7 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
   
   ## PLOT AESTETICS
   #> Color Code DataPoints
-  pool_LAST[,"Label"] <- ifelse(pool_LAST[["IL"]]>0, "1", "2") #1= UP, 2= DOWN
-  legNames <- c(paste0("Get ",coin2),
-                paste0("Get ",coin1))
+  pool_LAST[,"Label"] <- ifelse(pool_LAST$PriceChange>1, paste0("Swap to ",coin2), paste0("Swap to ",coin1))
   
   # colorMatrix
   #Change background color if pool is "at risk"
@@ -99,17 +111,9 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     #scale_fill_manual(name = paste0("FavTrend: ",favTrend), values = labelColors, labels=legNames) +
     scale_y_continuous(labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
-                       breaks=seq(-5, 5, 0.005)
-    ) +
+                       breaks=seq(-5, 5, 0.005)) +
     geom_hline(yintercept = 0) 
-  
-  
-  if (has.REFDATA){#if not FALSE: var is either FALSE, or a data.frame
-    plot1 <- plot1 +
-      geom_line(data=pool_REF, aes(x=Date_UTC, y=IL), na.rm = TRUE) +
-      geom_point(data=pool_REF, aes(x=Date_UTC, y=IL), na.rm = TRUE, colour= "black") #black dots
-      #geom_point(data=pool_REF, aes(x=Date_UTC, y=IL), na.rm = TRUE, shape=21, colour= "black", fill="white") #white dots
-  }
+
   
   ## 2. ADD: CumulEARN
   
@@ -211,6 +215,9 @@ plotLimits.Calc <- function(stopLossTolerance = 0.01,
     
     #Extended labels
     limits_df2[r, "Label_Extended"] <- paste(limits_df2[r, "Label_root"], limits_df2[r, "Label_Text"], sep=": ") %>% unlist
+    if(str_starts(label, "SL")){ #stop-loss only
+      limits_df2[r, "Label_Extended"] <- sprintf("%s (%s%%): %s",
+                                                 limits_df2[r, "Label_root"],round(stopLossTolerance*100,1), limits_df2[r, "Label_Text"])}
   }
   
   # Color Coded PRICE

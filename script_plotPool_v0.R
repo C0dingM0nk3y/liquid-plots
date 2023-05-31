@@ -2,32 +2,20 @@
 
 #> Scripts take "id" and "dir.REF.single" "dir.TABLES.single" variables from GlobalEnv and use them to
 #> 1. Rebuild all paths and upload data
-#> 2. Perform calculations required for plotting
+## 2. Perform calculations required for plotting
 #> 3. Produce different plots
 #> 4. Return a collage of plots, as a single 'fig'
 
 # PART 1: IMPORT data to plot (snap_H/ops/claim) ####
 
 # Rebuild PATHS
-#ops.table.path <- paste0(dir.TABLES.single,id,"_ops.csv")
 claim.table.path <- paste0(dir.TABLES.single,id,"_claim.csv")
-#snap.history.path <- paste0(dir.TABLES.single,id,"_snapshots.History.csv")
 pool.history.path <- paste0(dir.TABLES.single,id,"_pool.History.csv") #includes OPS and SNAPS
 refData.path <- paste0(dir.REF.single,id,"_refData.csv")
 
 # IMPORT and Convert column data to the appropriate type (double, POSIX...)
-#ops_H <- read.csv2(ops.table.path) #REPLACE WITH HIST FILE
-#ops_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-#ops_H[,"Qnt1"] %<>% as.numeric()
-#ops_H[,"Qnt2"] %<>% as.numeric()
-
-#snap_H <- read.csv2(snap.history.path)
-#snap_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-#snap_H[,"Qnt1"] %<>% as.numeric()
-#snap_H[,"Qnt2"] %<>% as.numeric()
 
 pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
-pool_H[,"Date_UTC2"] <- msec_to_datetime(pool_H$Date_Unix)
 pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
 #pool_H[,"Qnt1"] %<>% as.numeric()
@@ -39,18 +27,18 @@ claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
 # PART 2: POOL CALCULATIONS ####
 
-#> 2.a Pool INFO ####
+## 2.A Pool INFO ####
 poolName <- pool_H[1,"poolName", drop=T]
 coin1 <- pool_H[1,"Coin1", drop=T]
 coin2 <- pool_H[1,"Coin2", drop=T]
 coin3 <- claim_H[1,"Coin3", drop=T] # coin 3 is recovered from claim_CALC
 
-#> 2.b POOL RATIO/PRICE ####
+## 2.B POOL RATIO/PRICE ####
 # Add useful calculations for later ref
 pool_H[,"PoolRatio"] <- with(pool_H, Qnt1/Qnt2) 
 pool_H[,"PoolPrice"] <- 1/pool_H$PoolRatio
 
-#> 2.c MARKET data ####
+## 2.C MARKET data ####
 price1 <- priceMatrix[coin1,refCoin]
 price2 <- priceMatrix[coin2,refCoin]
 price3 <- ifelse(is.na(coin3), 0, priceMatrix[coin3,refCoin])
@@ -59,7 +47,7 @@ pool_H[,"Value1"] <- with(pool_H, Qnt1*price1)
 pool_H[,"Value2"] <- with(pool_H, Qnt2*price2)
 pool_H[,"ValueTOT"] <- with(pool_H, Value1+Value2)
 
-#> 2.d STARTING point data ####
+## 2.D STARTING point data ####
 #> All calc related to current (final) state of Pool
 #>> NOTE: in current implementation, it is expected for the LAST operation to be a ADD. 
 #>> Future implementation will be able to interpret more complex (multi ADD/RMOVE) operation, 
@@ -83,7 +71,20 @@ start_value <- start_DF[1,"ValueTOT", drop=T] #for Cum_ValTOTx100 calc
 start_ratio <- start_DF[1,"PoolRatio", drop=T]
 start_price <- start_DF[1,"PoolPrice", drop=T]
 
-#> 2.e FILTER for LATEST POOL > IL/ROI calc ####
+
+## 2.E MERGE to RefData, FILTER, CALC (IL/ROI) ####
+
+## [optional] MERGE to REFDATA if optional ####
+if (file.exists(refData.path)){
+  #has.REFDATA = TRUE
+  pool_REF <- read.csv2(refData.path) 
+  pool_REF[,"operation"] <- "REFDATA"
+  pool_REF[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC") #convert
+  colnames(pool_REF) %<>% str_replace("updateTime", "Date_Unix") #rename col
+  
+  pool_H <- bind_rows(pool_H, pool_REF)} #merge to single DF
+
+# subset and add calc.
 pool_LAST <- pool_H %>% subset(Date_UTC >= start_date)
 
 pool_LAST[,"PriceChange"] <- with(pool_LAST, PoolPrice/start_price) 
@@ -94,7 +95,7 @@ for (r in 1:nrow(pool_LAST)){
   pool_LAST[r, "IL"] <- RatioToIL(p=p)}
 
 
-#> 2.f CLAIM Calculations ####
+## 2.F CLAIM Calculations ####
 #> scan the full history of pool claims, and FILTER for those that happened AFTER 'poolStart' date
 
 claim_CALC <- subset(claim_H, Date_UTC >= start_date)
@@ -121,7 +122,7 @@ claim_CALC[,"Cum_Val3"] <- claim_CALC[,"Cum_Qnt3"]*price3
 claim_CALC[,"Cum_ValTOT"] <- with(claim_CALC, (Cum_Val1+Cum_Val2+Cum_Val3))
 claim_CALC[,"Cum_ValTOTx100"] <- with(claim_CALC, Cum_ValTOT/start_value)
 
-#> 2.g ENDPOINT Data ####
+## 2.G ENDPOINT Data ####
 #> All calc related to current (final) state of Pool
 
 # from pool_LAST
@@ -137,34 +138,12 @@ end_maxEarm <- claim_CALC$Cum_ValTOTx100 %>% tail(1) #last entry
 end_ROInet <- end_maxEarm-abs(end_DF[1,"IL"]) 
 
 # MOVE into PLOT part?
-limits_DF <- plotLimits.Calc() #> returns useful cols like: 
-                                    #> LimitX100, Limit_Price, 
-                                    #> TextColor, Color,
-                                    #> Label_Extended, nudge_x, nudge_y
+limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss) 
+                            #> returns useful cols like: 
+                            #> LimitX100, Limit_Price, 
+                            #> TextColor, Color,
+                            #> Label_Extended, nudge_x, nudge_y
 
-# TO BE FINISHED
-
-#> [2.z] Recovers REFDATA [if.available] ####
-
-if (file.exists(refData.path)){
-  has.REFDATA = TRUE
-  pool_REF <- read.csv2(refData.path) %>%           #import
-    subset(Date_UTC > start_date)                   #filter
-  pool_REF[order(pool_REF$updateTime), ]            #re-order
-  pool_REF[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC") #convert
-  
-  # Calculate IL
-  pool_REF[,"RatioChance"] <- with(pool_REF, PoolRatio/start_ratio) # for IF calculation
-  
-  for (r in 1:nrow(pool_REF)){
-    p <- pool_REF[r, "RatioChance"]
-    pool_REF[r, "IL"] <- RatioToIL(p=p)}
-  
-  
-}else{
-  has.REFDATA <- FALSE
-  pool_REF <- data.frame() #empty df
-}
 
 # PART 3: PLOT ASSEMBLY ####
 
@@ -183,4 +162,36 @@ plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 
 #### WORK IN PROGRESS ####
 
+if (FALSE){
 
+# PLOT
+plot0 <- pool_LAST %>%
+  ggplot(aes(x=Date_UTC)) +
+  theme_classic() +
+  theme(panel.grid.major.y=element_line(), 
+        panel.grid.minor.y=element_line(linetype="dashed"))+
+  ggtitle(poolName)+
+  scale_x_datetime(timezone = "UTC", limits = trends_lim) +
+  scale_y_continuous(limits = c(yLim_down, yLim_up))+
+  #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
+  xlab("Datetime (UTC)")
+
+## 1. ADD: PriceTrends
+plot1 <- plot0 +
+  geom_line(data=pool_LAST, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
+  geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
+  ylab(poolName)
+
+## [Optional] ADD refData
+if (has.REFDATA){#if not FALSE: var is either FALSE, or a data.frame
+  plot1 <- plot1 +
+    geom_line(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
+    geom_point(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE, shape=21, colour= "black", fill="white")
+}
+
+## 2. ADD: annotations (top layer)
+plot2 <- plot1 +
+  geom_hline(yintercept = start_price) +
+  annotate("label", x = xLim_left, y=start_price*1.05, label=as.character(paste0("Entry Price: ",round(start_price,3),"")),
+           size=3.5, hjust=0)
+}
