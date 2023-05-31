@@ -1,8 +1,8 @@
-# @ script_plotPool_v1 @ ####
+#### @ script_plotPool_v1 @ ####
 
 #> Scripts take "id" and "dir.REF.single" "dir.TABLES.single" variables from GlobalEnv and use them to
 #> 1. Rebuild all paths and upload data
-## 2. Perform calculations required for plotting
+#> 2. Perform calculations required for plotting
 #> 3. Produce different plots
 #> 4. Return a collage of plots, as a single 'fig'
 
@@ -14,16 +14,15 @@ pool.history.path <- paste0(dir.TABLES.single,id,"_pool.History.csv") #includes 
 refData.path <- paste0(dir.REF.single,id,"_refData.csv")
 
 # IMPORT and Convert column data to the appropriate type (double, POSIX...)
-
 pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
 pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
 #pool_H[,"Qnt1"] %<>% as.numeric()
 #pool_H[,"Qnt2"] %<>% as.numeric()
 
+
 claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
 claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-
 
 # PART 2: POOL CALCULATIONS ####
 
@@ -55,8 +54,6 @@ pool_H[,"ValueTOT"] <- with(pool_H, Value1+Value2)
 #>> for now it is only plotting results from LAST operation
 
 # !!! In the future, start_DF will be caulculated using the segment analsysis tool.
-# If so, then all ops_df data can be merged to snapshot and used to simply have additional time points to plot
-
 start_DF <- pool_H %>% 
   subset(operation=="ADD") %>% 
   tail(1)# find last ADD
@@ -117,6 +114,7 @@ claim_CALC[,"Cum_Qnt2"] <- cumsum(claim_CALC[,"claimed2"])
 claim_CALC[,"Cum_Qnt3"] <- cumsum(claim_CALC[,"claimed3"])
 
 #calculate Cumul%, expressed as %of new coin earned compared to start_qnt
+
 #> this is only calculated on coin1/coin2)
 claim_CALC[,"Cum_%1"] <- claim_CALC[,"Cum_Qnt1"]/start_qnt1
 claim_CALC[,"Cum_%2"] <- claim_CALC[,"Cum_Qnt2"]/start_qnt2

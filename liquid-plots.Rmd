@@ -277,9 +277,7 @@ var_rm <- setdiff(var_all,var_keep)
 rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
 ```
 
-
 ## Part 2: DATA ANALYSIS
-
 
 ```{r analysis-init}
 # VARIABLES and DF that need to be re-imported before running Part 2
@@ -469,7 +467,4 @@ for (id in poolId_list){
 
 
 ```
-
-
-
 

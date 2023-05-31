@@ -310,4 +310,3 @@ plotLimits.Calc <- function(stopLossTolerance = 0.01,
   return(limits_df2)
 }
 
-

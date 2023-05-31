@@ -133,7 +133,6 @@ ops.tableInterpreter <- function(jsonPath){
   
   #Reorder by date
   ops.wide <- ops.wide[order(ops.wide$Date_UTC), ]
-
   
   return(ops.wide)
 }
@@ -178,7 +177,7 @@ claim.tableInterpreter <- function(jsonPath){
                             names_from = "coinId", values_from = "claimAmount", names_prefix = "claimed",
                             values_fn = sum) #define what to do in case of multiple value for the same name 
                                              #> (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
-  
+
   claim.wide <- claim.wide[order(claim.wide$Date_UTC), ]
 
   return(claim.wide)
@@ -223,9 +222,6 @@ activePools.Calc <- function(liq.df){
                               "Coin2","Qnt2","Value2",
                               "Value_TOT", "Currency")]
 }
-
-
-
 
 
 getPrice <- function(price_df, coin, refCoin="USDT"){
