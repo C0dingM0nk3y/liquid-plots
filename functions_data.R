@@ -115,6 +115,11 @@ ops.tableInterpreter <- function(jsonPath){
     unnest_wider(col = "liquidityAmount", simplify = T) %>% # unnest col 'liquidityAmount' into 'asset' and 'amount'
     subset(status==1) #filters out UNCOMPLETED transaction ("processing")
   
+  #converts to numeric
+  ops.df[,"shareAmount"] %<>% unlist() %>% as.numeric() 
+  ops.df[,"amount"] %<>% unlist() %>% as.numeric() 
+  
+  ops.df[,"Date_Unix"] <- ops.df$updateTime #rename
   ops.df[,"Date_UTC"] <- ops.df$updateTime %>% msec_to_datetime()
   
   # pivot df so to have one 1-entry for each operation
@@ -123,7 +128,7 @@ ops.tableInterpreter <- function(jsonPath){
   
   ops.df[,"coinId"] <- ifelse(ops.df$asset==ops.df$Coin1,"1","2")#either 1/2 depending on order in pool
   
-  ops.wide <- pivot_wider(ops.df, id_cols=c("Date_UTC", "operation", "poolId", "poolName", "shareAmount",  "Coin1", "Coin2"), 
+  ops.wide <- pivot_wider(ops.df, id_cols=c("Date_UTC", "Date_Unix", "operation", "poolId", "poolName", "shareAmount",  "Coin1", "Coin2"), 
                           names_from = "coinId", values_from = "amount", names_prefix = "Qnt")
   
   #Reorder by date
@@ -138,7 +143,10 @@ claim.tableInterpreter <- function(jsonPath){
   
   #input file
   claim.j <- fromJSON(jsonPath, simplifyVector = T, flatten = T) %>%
-    subset(status==1)
+    subset(status==1) %>%
+    unique() #this is important in case of joined JSON from multiple API calls: 
+             #> they ALWAYS have some duplicated entry at the interface between file 1 and 2 
+             #> this is because of the reason data is downloaded)
 
   claim.j[,"claimAmount"] %<>% as.numeric()
   claim.j[,"Date_UTC"] <- claim.j$claimedTime %>% msec_to_datetime()
@@ -152,21 +160,24 @@ claim.tableInterpreter <- function(jsonPath){
   #> steps below allow to recover the name of coin3
   poolCoins <- claim.j[1,"poolName"] %>% str_split(pattern = "/") %>% unlist()
   
-  Coin3 <- unique(claim.j$assetRewards) %>% 
+  otherCoin <- unique(claim.j$assetRewards) %>% 
     setdiff(c(poolCoins)) #remove known coins
   
-  claim.j[,"Coin3"] <- ifelse(length(Coin3)==0, NA, Coin3) #if no Coin3, set to NA
+  Coin3 <- ifelse(length(otherCoin)==0, NA, otherCoin) #if no Coin3, set to NA
+  claim.j[,"Coin3"] <- Coin3 
   
   # Assign Coin number [1/2/3]
-  claim.j[claim.j$assetRewards==claim.j$Coin1, "coinId"] <- "1"
-  claim.j[claim.j$assetRewards==claim.j$Coin2, "coinId"] <- "2"
-  claim.j[claim.j$assetRewards==claim.j$Coin3, "coinId"] <- "3"
+  claim.j[claim.j$assetRewards == claim.j$Coin1, "coinId"] <- "1"
+  claim.j[claim.j$assetRewards == claim.j$Coin2, "coinId"] <- "2"
+  if(!(is.na(Coin3))){ #skip if Coin3 is NA
+    claim.j[claim.j$assetRewards == claim.j$Coin3, "coinId"] <- "3"}
   
   # pivot_wider
   claim.wide <- pivot_wider(claim.j, id_cols=c("Date_UTC", "poolId", "poolName", "status", "Coin1", "Coin2", "Coin3"), 
                             names_from = "coinId", values_from = "claimAmount", names_prefix = "claimed",
-                            values_fn = sum) #define what to do in case of multiple value for the same name (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
-  
+                            values_fn = sum) #define what to do in case of multiple value for the same name 
+                                             #> (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
+
   claim.wide <- claim.wide[order(claim.wide$Date_UTC), ]
 
   return(claim.wide)
@@ -212,6 +223,7 @@ activePools.Calc <- function(liq.df){
                               "Value_TOT", "Currency")]
 }
 
+
 getPrice <- function(price_df, coin, refCoin="USDT"){
   #> scan the price_df dataframe for symbol COINUSDT or USDTCOIN respectively.
   #> Returns price expressed in 'refCoin'
@@ -253,6 +265,7 @@ getPrice <- function(price_df, coin, refCoin="USDT"){
     return(NA)}
 }
 
+# TABLES and DATA ####
 
 datetime_to_sec <- function(datetime, format="sec", tz="UTC"){
   # tz = "UTC", same as "GMT". Local: "CEST" same as "Europe/Belin"
@@ -272,3 +285,49 @@ sec_to_datetime <- function(time_s, format="sec", tz="UTC"){
 
 msec_to_datetime <- function(datetime, format="msec", tz="UTC"){
   sec_to_datetime(datetime, format, tz)} #as the above, default to 
+
+# MATH ####
+ILtoRatio <- function(IL, trend="both"){
+  # solve the Impermanent loss function for p -> IL = 2*sqrt(p)/(p+1)
+  # p is the ratio of the price at the time of offering liquidity (r1) compared to a different price-ratio (r2)  -> p = r1/r2 
+  
+  # Input: IP percent (as a negative fraction: -0,01 = 1% or IP). 
+  # Output: target price that would cause that % of IL. Expressed as fraction of starting price (e.g. start price)
+  # trend ["up"/"down"/"both"]: select if the returned ratio refers to the a positive price change, or negative one.
+  
+  ## CREDITS to Piers for solving the algebra.
+  
+  IL <- -abs(IL) #convert to a neg percent, if not already
+  
+  a = (IL+1)^2
+  b = (2*IL^2) +(4*IL) - 2
+  c = (IL+1)^2
+  delta = (b^2)-(4*a*c)
+  
+  # calculate price changes to cause given IL
+  r_up = (-b +sqrt(delta))/(2*a)
+  r_down = (-b -sqrt(delta))/(2*a)
+  
+  if(trend %in% c("both", "BOTH", 0)){return(c(r_down,r_up))}
+  else if(trend %in% c("up", "UP", +1)){return(r_up)}
+  else if(trend %in% c("up", "DOWN", -1)){return(r_down)}
+}
+
+RatioToIL <- function(p, PriceChange, trend="auto"){
+  # solve the Impermanent loss function for p -> IL = (2*sqrt(p)/(p+1))-1
+  # p (from formula) is the RatioChange (ratio of the price at the time of offering liquidity (r1) compared to a different price-ratio (r2))
+  #   -> p = r1/r2 
+  # trend: pos/neg/auto (preferred sign to return. Both give pos % if PriceRatio >1, else neg %)
+  
+  # Input: PriceChange (current price, r2) / priceBuy (r1). This it the inverse of the ratio required for formula.
+  #       alternatively, p can be provided directly
+  # Output: percent of Value loss
+  
+  if(missing(p)){p <- 1/PriceChange} #convert price ratio (r2/r1) into r-ratio (r1/r2)
+  if(missing(PriceChange)){PriceChange <- 1/p} #convert price ratio (r2/r1) into r-ratio (r1/r2)
+  
+  IL <- (2*sqrt(p)/(p+1))-1 #always a NEG number
+  
+  if (trend=="pos" | PriceChange>=1){return(abs(IL))}
+  if (trend=="neg" | PriceChange<1){return(IL)}
+}
