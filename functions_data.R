@@ -218,6 +218,10 @@ activePools.Calc <- function(liq.df){
                               "Value_TOT", "Currency")]
 }
 
+
+
+
+
 getPrice <- function(price_df, coin, refCoin="USDT"){
   #> scan the price_df dataframe for symbol COINUSDT or USDTCOIN respectively.
   #> Returns price expressed in 'refCoin'
@@ -259,6 +263,7 @@ getPrice <- function(price_df, coin, refCoin="USDT"){
     return(NA)}
 }
 
+# TABLES and DATA ####
 
 datetime_to_sec <- function(datetime, format="sec", tz="UTC"){
   # tz = "UTC", same as "GMT". Local: "CEST" same as "Europe/Belin"
@@ -278,3 +283,49 @@ sec_to_datetime <- function(time_s, format="sec", tz="UTC"){
 
 msec_to_datetime <- function(datetime, format="msec", tz="UTC"){
   sec_to_datetime(datetime, format, tz)} #as the above, default to 
+
+# MATH ####
+ILtoRatio <- function(IL, trend="both"){
+  # solve the Impermanent loss function for p -> IL = 2*sqrt(p)/(p+1)
+  # p is the ratio of the price at the time of offering liquidity (r1) compared to a different price-ratio (r2)  -> p = r1/r2 
+  
+  # Input: IP percent (as a negative fraction: -0,01 = 1% or IP). 
+  # Output: target price that would cause that % of IL. Expressed as fraction of starting price (e.g. start price)
+  # trend ["up"/"down"/"both"]: select if the returned ratio refers to the a positive price change, or negative one.
+  
+  ## CREDITS to Piers for solving the algebra.
+  
+  IL <- -abs(IL) #convert to a neg percent, if not already
+  
+  a = (IL+1)^2
+  b = (2*IL^2) +(4*IL) - 2
+  c = (IL+1)^2
+  delta = (b^2)-(4*a*c)
+  
+  # calculate price changes to cause given IL
+  r_up = (-b +sqrt(delta))/(2*a)
+  r_down = (-b -sqrt(delta))/(2*a)
+  
+  if(trend %in% c("both", "BOTH", 0)){return(c(r_down,r_up))}
+  else if(trend %in% c("up", "UP", +1)){return(r_up)}
+  else if(trend %in% c("up", "DOWN", -1)){return(r_down)}
+}
+
+RatioToIL <- function(p, PriceChange, trend="auto"){
+  # solve the Impermanent loss function for p -> IL = (2*sqrt(p)/(p+1))-1
+  # p (from formula) is the RatioChange (ratio of the price at the time of offering liquidity (r1) compared to a different price-ratio (r2))
+  #   -> p = r1/r2 
+  # trend: pos/neg/auto (preferred sign to return. Both give pos % if PriceRatio >1, else neg %)
+  
+  # Input: PriceChange (current price, r2) / priceBuy (r1). This it the inverse of the ratio required for formula.
+  #       alternatively, p can be provided directly
+  # Output: percent of Value loss
+  
+  if(missing(p)){p <- 1/PriceChange} #convert price ratio (r2/r1) into r-ratio (r1/r2)
+  if(missing(PriceChange)){PriceChange <- 1/p} #convert price ratio (r2/r1) into r-ratio (r1/r2)
+  
+  IL <- (2*sqrt(p)/(p+1))-1 #always a NEG number
+  
+  if (trend=="pos" | PriceChange>=1){return(abs(IL))}
+  if (trend=="neg" | PriceChange<1){return(IL)}
+}

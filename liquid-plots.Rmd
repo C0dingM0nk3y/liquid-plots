@@ -26,7 +26,12 @@ pacman::p_load('stringr')
 pacman::p_load("tidyverse")
 #pacman::p_load("data.table")
 pacman::p_load('kableExtra')
-#pacman::p_load("lubridate")
+pacman::p_load("lubridate")
+
+#> Plotting
+pacman::p_load("ggplot2")
+pacman::p_load("ggrepel")
+
 
 #> Data visualization
 #pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
@@ -61,7 +66,7 @@ source("functions_plots.R")
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -403,14 +408,16 @@ Click on tab below to select the pool to visualize
 
 ***
 
-```{r results='asis'}
+```{r plots results='asis'}
 for (id in poolId_list){
   source("script_plotPool_v0.R") # makes calc
   
   cat(sprintf("#### %s <br>\n", poolName))
   cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
-  plot_trends <- LiqPlots_Trends() #plot1
-  print(plot_trends)
+  plot1 <- LiqPlots_Trends() #plot1
+  print(plot1)
+  plot2 <- LiqPlots_ILChanges() #plot2
+  print(plot2)
   cat("</div>\n")
   
   cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
