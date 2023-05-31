@@ -1,13 +1,18 @@
-LiqPlots_Trends <- function(){
+LiqPlots_Trends <- function(nudge=TRUE){
   #> Plots pool ASSET COMPOSITION over time
   #> All variables that are not defined here come from GlobalEnv
   
-
+  if (nudge==TRUE){
+    trends_lim <- plot_nudged}
+  else{
+    trends_lim <- plot_lim}
+  
   ## Y-RANGE options
-  #> Default is to plot up to +50% ref Price (up) and 1/2 price (down)
-  #> If real data are outseide of this range, then it plots 10% above and below min and max
-  yLim_up <- max(start_price*1.5, max(pool_LAST$PoolPrice)*1.1)
-  yLim_down <- min(start_price*0.5, min(pool_LAST$PoolPrice)*0.9)
+  #> Default is to plot up to +25% ref Price (up) and -25% price (down)
+  #> If real data are outside of this range, then it plots 10% above and below min and max
+  yLim_offset <- 0.25
+  yLim_up <- max(start_price*(1+yLim_offset), max(pool_LAST$PoolPrice)*1.1)
+  yLim_down <- min(start_price*(1-yLim_offset), min(pool_LAST$PoolPrice)*0.9)
   
   # CONVERTS DATES to POSIXct
   pool_LAST[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC")
@@ -23,7 +28,7 @@ LiqPlots_Trends <- function(){
     theme(panel.grid.major.y=element_line(), 
           panel.grid.minor.y=element_line(linetype="dashed"))+
     ggtitle(poolName)+
-    scale_x_datetime(timezone = "UTC", limits = plot_lim) +
+    scale_x_datetime(timezone = "UTC", limits = trends_lim) +
     scale_y_continuous(limits = c(yLim_down, yLim_up))+
     #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
     xlab("Datetime (UTC)")

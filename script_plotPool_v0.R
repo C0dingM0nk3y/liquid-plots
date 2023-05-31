@@ -27,6 +27,7 @@ refData.path <- paste0(dir.REF.single,id,"_refData.csv")
 #snap_H[,"Qnt2"] %<>% as.numeric()
 
 pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
+pool_H[,"Date_UTC2"] <- msec_to_datetime(pool_H$Date_Unix)
 pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
 #pool_H[,"Qnt1"] %<>% as.numeric()
@@ -175,6 +176,10 @@ xLim_left <- start_date #%>% as.POSIXct(tz = "UTC")
 xLim_right <- end_date #%>% as.POSIXct(tz = "UTC")
 plot_lim <- c(xLim_left, xLim_right)
 
+#nudge param
+nudge_x <- (datetime_to_sec(xLim_right)- datetime_to_sec(xLim_left)) %>% #distance (in UNIX time!) from label and datapoint.
+  as.numeric()*0.4 #multiply by 0.4 (size of 2/5 of the plot area)) #v3.5 changed from 0.2
+plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 
 #### WORK IN PROGRESS ####
 

@@ -447,24 +447,26 @@ for (id in poolId_list){
   
   cat(sprintf("#### %s <br>\n", poolName))
   cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
-  plot1 <- LiqPlots_Trends() #plot1
-  print(plot1)
-  plot2 <- LiqPlots_ILChanges() #plot2
-  print(plot2)
+  p1 <- LiqPlots_Trends() #plot1
+  p2 <- LiqPlots_ILChanges() #plot2
   cat("</div>\n")
   
+  # Arrange plots (pathwork)
+  pw <- p1/p2 
+  
+  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
+  #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
+  
+  pw <- pw + plot_layout(heights = c(4, 6), nrow = 2)
+  print(pw)
+  
+  # Link to Binance pool
   cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
   }
 
 
 ```
 
-# Arrange plots (pathwork)
-  pw <- p_main/p_apy 
-  
-  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis from first subplot
-  #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
-  
-  pw <- pw + plot_layout(heights = c(6, 3), nrow = 2)
+
 
 
