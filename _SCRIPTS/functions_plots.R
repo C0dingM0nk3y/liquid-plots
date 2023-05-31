@@ -186,7 +186,7 @@ LiqPlots_Swaps <- function(){
     out_coin <- coin1}
   
   swap_Title <- sprintf("Swapped %s %s for %s %s [as if price: %s]", 
-                        signif(in_qnt, 4), in_coin, signif(out_qnt, 4), out_coin, round(out_qnt/in_qnt,2))
+                        signif(in_qnt, 3), in_coin, signif(out_qnt, 3), out_coin, round(out_qnt/in_qnt,2))
   
   #PLOT
   plot0 <- pool_LAST %>%
@@ -204,13 +204,150 @@ LiqPlots_Swaps <- function(){
   
   ## 1. ADD: Swap data
   plot1 <- plot0 +
-    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color="orange"), linewidth=1.5) +
-    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color="purple"), linewidth=1.5) +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color=coin1), linewidth=1.5) +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color=coin2), linewidth=1.5) +
     #geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
     ylab("Coin Swaps")
   
   return(plot1)
   
+}
+
+LiqPlots_CumulEarn <- function(){
+  #> Plots automatic swap events due to the prided liquidity
+  #> pre-build to return differnt kind of outputs, but not it is only returning "rel%"
+  
+  #> to be able to sum IL to the earning until that time point, it requires to 
+  #> align the 2 dataframents and fill in the gaps
+  pool_MERGED <- bind_rows(claim_CALC, pool_LAST)
+  
+  pool_MERGED <- pool_MERGED[order(pool_MERGED$Date_UTC), ]
+  pool_MERGED %<>% fill(c("Cum_ValTOT", "Cum_ValTOTx100"),  #> Note, Snapshot and OPS entry have no data about CumulEarn 
+                        .direction = "down")                #> This is solved by aligning the table chronologically,
+  #> Then assigning them the Cumul values from the previous known Cumul data
+  
+  pool_MERGED %<>% replace_na(list("Cum_ValTOT" =0, "Cum_ValTOTx100" =0)) #replace NA with 0 (only needed for timepoints before frist Claim)
+  pool_MERGED %<>% subset(!(is.na(operation)), select=c(colnames(pool_LAST), "Cum_ValTOT", "Cum_ValTOTx100")) #removes Claimed data, not required any longer
+  
+  
+  ## PLOT AESTETICS
+  yLim_offset <- 0.05 # 5%
+  maxSwap <- max(abs(c(pool_LAST$Swap1_X100, pool_LAST$Swap2_X100)))
+  
+  ySwap_range <- max(yLim_offset, maxSwap)*1.1 #applyes to both up and down (symmetrical)
+  
+  #PLOT 
+  plot0 <- pool_LAST %>%
+    ggplot(aes(x=Date_UTC)) +
+    theme_classic() +
+    theme(panel.grid.major.y=element_line(), 
+          panel.grid.minor.y=element_line(linetype="dashed"))+
+    scale_x_datetime(timezone = "UTC", limits = plot_nudged) +
+    xlab("Datetime (UTC)")
+  
+  ## A. Plot Values
+  plotA <- plot0 +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=0, color="HODL"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT - end_hodl_TOT,  color="IL"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT+Cum_ValTOT-end_hodl_TOT,  color="Earn"), linewidth=1) +
+    ylab("vs HODL (value)")
+  
+  ## B. Plot Relative Values
+  plotB <- plot0 +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 0.1),
+                       #minor_breaks = seq(-5, 5, 0.001), 
+                       breaks=seq(-0.5, 0.5, 0.001)) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL),  color="IL"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL)+Cum_ValTOTx100,  color="Earn"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=0, color="HODL"), linewidth=1) +
+    ylab("vs HODL (%)")
+  
+  # Arrange plots (pathwork)
+  pw <- plotA/plotB
+  
+  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
+  pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
+  
+  pw <- pw + plot_layout(heights = c(1,1), nrow = 2)
+  
+  return(plotB)
+  
+}
+
+LiqPlots_plotAPY <- function(){
+  #> plot Cumul_APY for tracked pool
+  
+  # !!!!! later: make it a stacked plot!
+  
+  ## PLOT AESTETICS
+  
+  nudge_x <- (datetime_to_sec(xLim_right)- datetime_to_sec(xLim_right)) %>% #distance (in UNIX time!) from label and datapoint.
+    as.numeric()*0.4 #multiply by 0.4 (size of 2/5 of the plot area)) #v3.5 changed from 0.2
+  #plot_lim[2] <-  plot_lim[2] + nudge_x
+  
+  ## Y-RANGE #set max Y to avoid sudden peaks to change the scale
+  
+  # CALC: move elsewhere?
+  claim_CALC[, "timeDiff_D"] <- (claim_CALC[,"Date_UTC"]-start_date) %>% #already exprered in days
+    round(2) %>% as.numeric() #round and converts to numeric
+  claim_CALC[, "APY_1"] <- with(claim_CALC, `Cum_%1`/timeDiff_D*365)
+  claim_CALC[, "APY_2"] <- with(claim_CALC, `Cum_%2`/timeDiff_D*365)
+  claim_CALC[, "APY_3"] <- with(claim_CALC, `Cum_Val3`/end_DF[1,"ValueTOT"]/timeDiff_D*365) #Calculated on Value, not Qnt
+  claim_CALC[, "APY_TOT"] <- with(claim_CALC, ((APY_1+APY_2)/2) +APY_3)
+  claim_CALC[, "APY_TOT2"] <- with(claim_CALC, Cum_ValTOTx100/timeDiff_D*365) # SANITY CHECK. Results is basically the same
+  
+  maxAPY <- max(claim_CALC$APY_1, claim_CALC$APY_2, claim_CALC$APY_3, 
+                claim_CALC$APY_TOT, 
+                0.01, #plot at least up to 1% 
+                na.rm = T) 
+  lastCumAPY <- claim_CALC$APY_TOT %>% tail(1)
+  
+  #min value between max iAPY and 4x (last) Cumul EARN 
+  ylimMax <- min(maxAPY*1.1, lastCumAPY*3)
+  #y_increment <- 0.01 #min increment to show ABOVE ymax set to 5% incremeents
+  #ylimMax <- ((ylimData%/%y_increment)+1)* y_increment #finds the quotient, add 1, then multiply for desired increment
+  
+  # % label
+  lastCumAPY_label <- (round(lastCumAPY,3)*100) %>% #last value, time 100
+    as.character() %>% paste0("APY (tot): ",.,"%") 
+  
+  ## PLOT AESTETICS
+  ## PLOT 1: APY (tot)
+  plot <- claim_CALC %>%
+    ggplot(aes(x=Date_UTC, group=1)) + 
+    geom_line(aes(y=APY_1, color=coin1), linewidth=0.75) +
+    geom_line(aes(y=APY_2, color=coin2), linewidth=0.75) +
+    geom_line(aes(y=APY_3, color=coin3), linewidth=0.75) +
+    
+    geom_line(aes(y=APY_TOT, color="TOT"), color="black", linetype="dashed", size=0.75) +
+    
+    xlab("Datetime (UTC)") +
+    ylab("APY %") +
+    geom_hline(yintercept = 0) + 
+    
+    #scale_x_datetime(limits = plot_lim) + #v3.5: removed
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,ylimMax)) +
+    
+    theme_classic() +
+    theme(panel.grid.major.y=element_line(), panel.grid.minor.y=element_line(linetype="dotted"))
+  
+  #v3.5: added endpoint labeling
+  plot <- plot +
+    geom_label_repel(data = tail(claim_CALC, 1), 
+                     aes(x=xLim_right, y=lastCumAPY, label = lastCumAPY_label),
+                     #color= "white"
+                     #segment.colour = "white",
+                     size = 3, #text size
+                     force = 0.2, #repulsion force (avoid 2x labels to get too close) 
+                     min.segment.length = 0, #segments , this size as not plotted
+                     segment.linetype = 2, #"dash"
+                     direction = "x", # segment direction: "both", "x", "y" 
+                     nudge_x = nudge_x,
+                     na.rm = T
+    )
+  
+  
+  return(plot)
 }
 
 
