@@ -14,7 +14,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -452,15 +452,18 @@ for (id in poolId_list){
   p1 <- LiqPlots_Trends() #plot1
   p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
   p3 <- LiqPlots_Swaps()
+  p4 <- LiqPlots_CumulEarn()
+  p5 <- LiqPlots_plotAPY()
+  
   cat("</div>\n")
   
   # Arrange plots (pathwork)
-  pw <- p1/p2/p3
+  pw <- p1/p2/p3/p4/p5
   
   pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
   #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
   
-  pw <- pw + plot_layout(heights = c(6,6,4), nrow = 3)
+  pw <- pw + plot_layout(heights = c(6,6,4,2,2), nrow = 5)
   print(pw)
   
   # Link to Binance pool
