@@ -43,6 +43,7 @@ price1 <- priceMatrix[coin1,refCoin]
 price2 <- priceMatrix[coin2,refCoin]
 price3 <- ifelse(is.na(coin3), 0, priceMatrix[coin3,refCoin])
 
+# this is the Value that the pool would have AT CURRENT PRICE if user exited at that time point
 pool_H[,"Value1"] <- with(pool_H, Qnt1*price1)
 pool_H[,"Value2"] <- with(pool_H, Qnt2*price2)
 pool_H[,"ValueTOT"] <- with(pool_H, Value1+Value2)
@@ -77,18 +78,25 @@ start_price <- start_DF[1,"PoolPrice", drop=T]
 ## [optional] MERGE to REFDATA if optional ####
 if (file.exists(refData.path)){
   #has.REFDATA = TRUE
-  pool_REF <- read.csv2(refData.path) 
+  pool_REF <- read.csv2(refData.path)
   pool_REF[,"operation"] <- "REFDATA"
+  pool_REF[,"Qnt1"] <- NA #this data does not belong to this pool. It can even be removed from REFDATA file
+  pool_REF[,"Qnt2"] <- NA
   pool_REF[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC") #convert
   colnames(pool_REF) %<>% str_replace("updateTime", "Date_Unix") #rename col
   
-  pool_H <- bind_rows(pool_H, pool_REF)} #merge to single DF
+  #merge to single DF
+  pool_H <- bind_rows(pool_H, pool_REF)
+  pool_H <- pool_H[order(pool_H$Date_Unix), ]
+  }
 
 # subset and add calc.
 pool_LAST <- pool_H %>% subset(Date_UTC >= start_date)
 
 pool_LAST[,"PriceChange"] <- with(pool_LAST, PoolPrice/start_price) 
 pool_LAST[,"RatioChance"] <- with(pool_LAST, PoolRatio/start_ratio)  # for IF calculation
+pool_LAST[,"Swap1_X100"] <- with(pool_LAST, (Qnt1/start_qnt1)-1) #amount of coin swapped with the other
+pool_LAST[,"Swap2_X100"] <- with(pool_LAST, (Qnt2/start_qnt2)-1) 
 
 for (r in 1:nrow(pool_LAST)){
   p <- pool_LAST[r, "RatioChance"] 
@@ -134,6 +142,11 @@ end_price <- end_DF[1,"PoolPrice"]
 end_date <- max(claim_CALC$Date_UTC, pool_LAST$Date_UTC) #whichever is higher
 end_maxEarm <- claim_CALC$Cum_ValTOTx100 %>% tail(1) #last entry
 
+# HODL calculation. Value if 
+end_hodl1 <- start_qnt1*price1
+end_hodl2 <- start_qnt2*price2
+end_hodl_TOT <- end_hodl1+end_hodl2
+
 # ROI and background color
 end_ROInet <- end_maxEarm-abs(end_DF[1,"IL"]) 
 
@@ -162,36 +175,57 @@ plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 
 #### WORK IN PROGRESS ####
 
-if (FALSE){
-
 # PLOT
-plot0 <- pool_LAST %>%
-  ggplot(aes(x=Date_UTC)) +
-  theme_classic() +
-  theme(panel.grid.major.y=element_line(), 
-        panel.grid.minor.y=element_line(linetype="dashed"))+
-  ggtitle(poolName)+
-  scale_x_datetime(timezone = "UTC", limits = trends_lim) +
-  scale_y_continuous(limits = c(yLim_down, yLim_up))+
-  #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
-  xlab("Datetime (UTC)")
+if(FALSE){
+  #> Plots automatic swap events due to the prided liquidity
+  
+  #> PLOT SUBSET
+  #pool_SWAPS <- subset(pool_LAST, subset = !(is.na(Swap1_X100)))
+  pool_SWAPS <- pool_LAST #TEST
+  
+  ## PLOT AESTETICS
+  yLim_offset <- 0.05 # 5%
+  maxSwap <- max(abs(c(pool_SWAPS$Swap1_X100, pool_SWAPS$Swap2_X100)))
+  
+  ySwap_range <- max(yLim_offset, maxSwap)*1.1 #applyes to both up and down (symmetrical)
+  
+  # Automatic title
+  if (end_DF[1,"Qnt1"] > start_qnt1){
+    in_qnt <- end_DF[1,"Qnt1"] - start_qnt1
+    in_coin <- coin1
+    out_qnt <- end_DF[1,"Qnt2"]- start_qnt2
+    out_coin <- coin2}
+  else{
+    in_qnt <- end_DF[1,"Qnt2"] - start_qnt2
+    in_coin <- coin2
+    out_qnt <- end_DF[1,"Qnt1"]- start_qnt1
+    out_coin <- coin1}
+  
+  
+  swap_Title <- sprintf("Swapped %s %s for %s %s [as if price: %s]", 
+                        signif(in_qnt, 4), in_coin, signif(out_qnt, 4), out_coin, round(out_qnt/in_qnt,2))
+  
+    
+  plot0 <- pool_LAST %>%
+    ggplot(aes(x=Date_UTC)) +
+    ggtitle(swap_Title)+
+    theme_classic() +
+    theme(panel.grid.major.y=element_line(), 
+          panel.grid.minor.y=element_line(linetype="dashed"))+
+    scale_x_datetime(timezone = "UTC", limits = plot_nudged) +
+    scale_y_continuous(limits = c(-ySwap_range, ySwap_range),
+       labels = scales::percent_format(accuracy = NULL),
+       #minor_breaks = seq(-5, 5, 0.001), 
+       breaks=seq(-0.5, 5, 0.05)) +
+    xlab("Datetime (UTC)")
+  
+  ## 1. ADD: Swap data
+  plot1 <- plot0 +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color="orange"), linewidth=1.5) +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color="purple"), linewidth=1.5) +
+    #geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
+    ylab("Coin Swaps")
+  
+  return(plot1)
 
-## 1. ADD: PriceTrends
-plot1 <- plot0 +
-  geom_line(data=pool_LAST, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
-  geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
-  ylab(poolName)
-
-## [Optional] ADD refData
-if (has.REFDATA){#if not FALSE: var is either FALSE, or a data.frame
-  plot1 <- plot1 +
-    geom_line(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE) +
-    geom_point(data=pool_REF, aes(x=Date_UTC, y=PoolPrice), na.rm = TRUE, shape=21, colour= "black", fill="white")
-}
-
-## 2. ADD: annotations (top layer)
-plot2 <- plot1 +
-  geom_hline(yintercept = start_price) +
-  annotate("label", x = xLim_left, y=start_price*1.05, label=as.character(paste0("Entry Price: ",round(start_price,3),"")),
-           size=3.5, hjust=0)
 }

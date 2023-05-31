@@ -441,7 +441,7 @@ Click on tab below to select the pool to visualize
 
 ***
 
-```{r plots, results='asis'}
+```{r plots, results='asis', fig.align='center', fig.height=10, fig.width=8}
 setStopLoss <- 0.005 #set desired stop loss for plots
 
 for (id in poolId_list){
@@ -451,15 +451,16 @@ for (id in poolId_list){
   cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
   p1 <- LiqPlots_Trends() #plot1
   p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
+  p3 <- LiqPlots_Swaps()
   cat("</div>\n")
   
   # Arrange plots (pathwork)
-  pw <- p1/p2 
+  pw <- p1/p2/p3
   
   pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
   #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
   
-  pw <- pw + plot_layout(heights = c(6, 6), nrow = 2)
+  pw <- pw + plot_layout(heights = c(6,6,4), nrow = 3)
   print(pw)
   
   # Link to Binance pool

@@ -112,7 +112,8 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     scale_y_continuous(labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
                        breaks=seq(-5, 5, 0.005)) +
-    geom_hline(yintercept = 0) 
+    ylab("Impermanent Loss (%)| Cumul Earnings (%)") +
+    geom_hline(yintercept = 0)
 
   
   ## 2. ADD: CumulEARN
@@ -131,7 +132,8 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     #> idea for the future: allow to expand grid size, so to be able to plot lables at the RIGHT of the plot.
     #> example: https://mran.microsoft.com/snapshot/2017-08-20/web/packages/ggrepel/vignettes/ggrepel.html
     
-    annotate("label", x = xLim_left, y=0.0015, label=as.character(paste0("Entry Price: ",round(start_price,3),"")), size=3.5, hjust=0) +
+    geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=0, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
+                     size=3.5, force = 1, fill= "white", direction="y", nudge_y = -0.002) +
     geom_point(data=limits_DF, aes(x=xLim_right, y=LimitX100), color= limits_DF$Color) + #add endpoint as scatterplot
     # idea: http://www.sthda.com/english/wiki/ggplot2-texts-add-text-annotations-to-a-graph-in-r-software
     geom_label_repel(data=limits_DF, aes(x=xLim_right, y=LimitX100, label = Label_Extended),
@@ -154,6 +156,59 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
           panel.background = element_rect(fill = panel_color))
   
   return(plot4)
+}
+
+LiqPlots_Swaps <- function(){
+  #> Plots automatic swap events due to the prided liquidity
+  
+  #> PLOT SUBSET
+  #pool_SWAPS <- subset(pool_LAST, subset = !(is.na(Swap1_X100)))
+  pool_SWAPS <- pool_LAST #TEST
+  
+  ## PLOT AESTETICS
+  yLim_offset <- 0.05 # 5%
+  maxSwap <- max(abs(c(pool_SWAPS$Swap1_X100, pool_SWAPS$Swap2_X100)))
+  
+  ySwap_range <- max(yLim_offset, maxSwap)*1.1 #applyes to both up and down (symmetrical)
+  
+  # Automatic title
+  if (end_DF[1,"Qnt1"] > start_qnt1){
+    in_qnt <- end_DF[1,"Qnt1"] - start_qnt1
+    in_coin <- coin1
+    out_qnt <- end_DF[1,"Qnt2"]- start_qnt2
+    out_coin <- coin2}
+  else{
+    in_qnt <- end_DF[1,"Qnt2"] - start_qnt2
+    in_coin <- coin2
+    out_qnt <- end_DF[1,"Qnt1"]- start_qnt1
+    out_coin <- coin1}
+  
+  swap_Title <- sprintf("Swapped %s %s for %s %s [as if price: %s]", 
+                        signif(in_qnt, 4), in_coin, signif(out_qnt, 4), out_coin, round(out_qnt/in_qnt,2))
+  
+  #PLOT
+  plot0 <- pool_LAST %>%
+    ggplot(aes(x=Date_UTC)) +
+    ggtitle(swap_Title)+
+    theme_classic() +
+    theme(panel.grid.major.y=element_line(), 
+          panel.grid.minor.y=element_line(linetype="dashed"))+
+    scale_x_datetime(timezone = "UTC", limits = plot_nudged) +
+    scale_y_continuous(limits = c(-ySwap_range, ySwap_range),
+                       labels = scales::percent_format(accuracy = NULL),
+                       #minor_breaks = seq(-5, 5, 0.001), 
+                       breaks=seq(-0.5, 5, 0.05)) +
+    xlab("Datetime (UTC)")
+  
+  ## 1. ADD: Swap data
+  plot1 <- plot0 +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color="orange"), linewidth=1.5) +
+    geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color="purple"), linewidth=1.5) +
+    #geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
+    ylab("Coin Swaps")
+  
+  return(plot1)
+  
 }
 
 
