@@ -52,7 +52,7 @@ pool_H[,"PoolPrice"] <- 1/pool_H$PoolRatio
 #> 2.c MARKET data ####
 price1 <- priceMatrix[coin1,refCoin]
 price2 <- priceMatrix[coin2,refCoin]
-price3 <- priceMatrix[coin3,refCoin]
+price3 <- ifelse(is.na(coin3), 0, priceMatrix[coin3,refCoin])
 
 pool_H[,"Value1"] <- with(pool_H, Qnt1*price1)
 pool_H[,"Value2"] <- with(pool_H, Qnt2*price2)
@@ -99,6 +99,8 @@ for (r in 1:nrow(pool_LAST)){
 claim_CALC <- subset(claim_H, Date_UTC >= start_date)
 
 #calculate cumulData
+if(is.na(coin3)){claim_CALC[,"claimed3"] <- NA} #sanity check (some pools have no extra Rewards)
+
 claim_CALC %<>% replace_na(replace = list(claimed1=0, claimed2=0, claimed3=0)) #replace NA with 0
 claim_CALC[,"Cum_Qnt1"] <- cumsum(claim_CALC[,"claimed1"])
 claim_CALC[,"Cum_Qnt2"] <- cumsum(claim_CALC[,"claimed2"])

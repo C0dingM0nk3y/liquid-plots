@@ -14,7 +14,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -166,7 +166,7 @@ if(run_api){
   
   # TEMP WORKAROUND
           message("FITER APPLIED: only selected pools are kept")            #TEMP
-          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX", liq.df$poolName))  #TEMP
+          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX|BNB", liq.df$poolName))  #TEMP
   
   liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
   write.csv2(liq.df, liq.df.path, row.names = F)
@@ -280,8 +280,10 @@ rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
 
 ## Part 2: DATA ANALYSIS
 
+
 ```{r analysis-init}
 # VARIABLES and DF that need to be re-imported before running Part 2
+
 if(run_api==FALSE){
   price.df <- read.csv2(paste0(dir.IN,"API_price_unpacked.csv"))
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
@@ -392,6 +394,7 @@ if(run_analysis){
     cat(sprintf("\t _ops.csv (%s rows)", nrow(ops_DF))) #REMOVE?
     
     # Last Pool Balance (SNAPSHOT)
+    
     snap_DF <-  subset(active.DF, poolId==id)
     #add missing columns before joining to ops table
     snap_DF[,"shareAmount"] <- snap_DF[,"share.Amount"] #name change
@@ -400,7 +403,9 @@ if(run_analysis){
     # Update/Crete HISTORY file (HISTORY)
     if (file.exists(pool.history.path)){
       pool_prev <- read.csv2(pool.history.path) #import prev history
-      pool_prev[, "Date_UTC"] %<>% as.POSIXct(tz="UTC")}
+      #recalculate from Unix, that is always the safest option 
+      #> reason: if the file was opened with Excel, it changes all data formats)
+      pool_prev[, "Date_UTC"] <- msec_to_datetime(pool_prev$Date_Unix, tz = "UTC")} 
     else{pool_prev <- snap_DF} #...or replace it with latest data
     
     # JOIN and removes duplicates
@@ -412,10 +417,11 @@ if(run_analysis){
     pool_HIST <- pool_HIST[order(pool_HIST$Date_Unix), ] #order chronologically
   
     write.csv2(pool_HIST, pool.history.path, row.names = F) # EXPORT HIST file
-    cat(sprintf("\t _pool.History.csv (read %s rows, write %s)\n", nrow(pool_prev), nrow(pool_HIST)))
+    cat(sprintf("\t _pool.History.csv (read:%s, write:%s rows)\n", nrow(pool_prev), nrow(pool_HIST)))
   }
 }
 ```
+
 
 ## Part 3: PLOTS
 
@@ -450,6 +456,15 @@ for (id in poolId_list){
   cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
   }
 
+
 ```
+
+# Arrange plots (pathwork)
+  pw <- p_main/p_apy 
+  
+  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis from first subplot
+  #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
+  
+  pw <- pw + plot_layout(heights = c(6, 3), nrow = 2)
 
 

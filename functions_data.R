@@ -161,20 +161,23 @@ claim.tableInterpreter <- function(jsonPath){
   #> steps below allow to recover the name of coin3
   poolCoins <- claim.j[1,"poolName"] %>% str_split(pattern = "/") %>% unlist()
   
-  Coin3 <- unique(claim.j$assetRewards) %>% 
+  otherCoin <- unique(claim.j$assetRewards) %>% 
     setdiff(c(poolCoins)) #remove known coins
   
-  claim.j[,"Coin3"] <- ifelse(length(Coin3)==0, NA, Coin3) #if no Coin3, set to NA
+  Coin3 <- ifelse(length(otherCoin)==0, NA, otherCoin) #if no Coin3, set to NA
+  claim.j[,"Coin3"] <- Coin3 
   
   # Assign Coin number [1/2/3]
-  claim.j[claim.j$assetRewards==claim.j$Coin1, "coinId"] <- "1"
-  claim.j[claim.j$assetRewards==claim.j$Coin2, "coinId"] <- "2"
-  claim.j[claim.j$assetRewards==claim.j$Coin3, "coinId"] <- "3"
+  claim.j[claim.j$assetRewards == claim.j$Coin1, "coinId"] <- "1"
+  claim.j[claim.j$assetRewards == claim.j$Coin2, "coinId"] <- "2"
+  if(!(is.na(Coin3))){ #skip if Coin3 is NA
+    claim.j[claim.j$assetRewards == claim.j$Coin3, "coinId"] <- "3"}
   
   # pivot_wider
   claim.wide <- pivot_wider(claim.j, id_cols=c("Date_UTC", "poolId", "poolName", "status", "Coin1", "Coin2", "Coin3"), 
                             names_from = "coinId", values_from = "claimAmount", names_prefix = "claimed",
-                            values_fn = sum) #define what to do in case of multiple value for the same name (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
+                            values_fn = sum) #define what to do in case of multiple value for the same name 
+                                             #> (e.g. BNB rewards in a COIN/BNB pool will have 2x BNB entries). SUM. )
   
   claim.wide <- claim.wide[order(claim.wide$Date_UTC), ]
 
