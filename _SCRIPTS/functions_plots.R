@@ -37,9 +37,10 @@ LiqPlots_Trends <- function(nudge=TRUE){
   
   plot1 <- plot0 +
     geom_hline(yintercept = start_price, linetype="dashed") +
-    geom_hline(yintercept = limits_ss$Limit_Price, linetype="dashed", color= limits_ss$Color) +  #all beside "Current"
-    geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=start_price, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
-                     size=3.5, force = 1, fill= "white", direction="y", nudge_y = -start_price*0.1) 
+    geom_hline(yintercept = limits_ss$Limit_Price, linetype="dashed", color= limits_ss$Color) #all beside "Current"
+    
+    #geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=start_price, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
+    #                 size=3.5, force = 1, fill= "white", direction="y") #, nudge_y = -start_price*0.1) 
     
   ## 2. ADD: PriceTrends
   plot2 <- plot1 +
@@ -51,6 +52,7 @@ LiqPlots_Trends <- function(nudge=TRUE){
     
   plot3 <- plot2 +
     geom_point(data=limits_DF, aes(x=xLim_right, y=Limit_Price), color= limits_DF$Color) + #add endpoint as scatterplot
+    annotate("label", x = xLim_left, y=start_price*0.96, label=as.character(paste0("Entry Price: ",round(start_price,3),"")), size=3.5, hjust=0) +
     geom_label_repel(data=limits_DF, aes(x=xLim_right, y=Limit_Price, label = Label_Extended),
                      fill= limits_DF$Color, #box col.
                      color= limits_DF$TextColor,#text col
@@ -131,9 +133,9 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     #coord_cartesian(xlim = c(xLim_left, xLim_right + 1000000)) + 
     #> idea for the future: allow to expand grid size, so to be able to plot lables at the RIGHT of the plot.
     #> example: https://mran.microsoft.com/snapshot/2017-08-20/web/packages/ggrepel/vignettes/ggrepel.html
-    
-    geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=0, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
-                     size=3.5, force = 1, fill= "white", direction="y", nudge_y = -0.002) +
+    annotate("label", x = xLim_left, y=-0.0015, label=as.character(paste0("Entry Price: ",round(start_price,3),"")), size=3.5, hjust=0) +
+    #geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=0, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
+    #                 size=3.5, force = 1, fill= "white", direction="y", nudge_y = -0.002) +
     geom_point(data=limits_DF, aes(x=xLim_right, y=LimitX100), color= limits_DF$Color) + #add endpoint as scatterplot
     # idea: http://www.sthda.com/english/wiki/ggplot2-texts-add-text-annotations-to-a-graph-in-r-software
     geom_label_repel(data=limits_DF, aes(x=xLim_right, y=LimitX100, label = Label_Extended),

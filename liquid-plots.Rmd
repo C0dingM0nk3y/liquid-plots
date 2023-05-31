@@ -14,7 +14,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```

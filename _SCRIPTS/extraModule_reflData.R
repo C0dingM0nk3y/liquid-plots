@@ -64,17 +64,17 @@ if(make_poolHist){
       
       poolH <- data.frame(
         Date_UTC = ss$Date_UTC,
-        Data_Unix = ss$updateTime,
+        Date_Unix = ss$updateTime,
         operation = "SNAPSHOT",
         poolId = ss$poolId,
         poolName = ss$poolName,
-        shareAmount = ss$share.Amount,
+        shareAmount = ss$share.Amount %>% as.numeric(),
         Coin1 = ss$Coin1,
         Coin2 = ss$Coin2,
         Qnt1 = ss$Qnt1,
         Qnt2 = ss$Qnt2
       )
       
-      write.csv2(ss, path.Exp.refData, row.names = F)}
+      write.csv2(poolH, path.Exp.refData, row.names = F)}
 }
 
