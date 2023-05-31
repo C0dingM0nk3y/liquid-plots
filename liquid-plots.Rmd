@@ -14,7 +14,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -62,8 +62,8 @@ dir.REF.single <-  paste0(dir.REF, "SinglePools/") %T>% dir.create(showWarnings 
 #for reference:
   "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/@SCRIPTS//Binance_FUNCTIONS_v1.9.R"
 
-source("functions_data.R")
-source("functions_plots.R")
+source("_SCRIPTS/functions_data.R")
+source("_SCRIPTS/functions_plots.R")
 ```
 
 ---
@@ -443,7 +443,7 @@ Click on tab below to select the pool to visualize
 setStopLoss <- 0.005 #set desired stop loss for plots
 
 for (id in poolId_list){
-  source("script_plotPool_v0.R") # makes calc
+  source("_SCRIPTS/script_plotPool_v0.R") # makes calc
   
   cat(sprintf("#### %s <br>\n", poolName))
   cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
