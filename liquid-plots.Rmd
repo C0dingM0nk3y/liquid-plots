@@ -439,12 +439,12 @@ Click on tab below to select the pool to visualize
 
 ***
 
-```{r plots, results='asis', fig.align='center', fig.height=10, fig.width=8}
+```{r plots, results='asis', fig.align='center', fig.height=6, fig.width=10}
 setStopLoss <- 0.005 #set desired stop loss for plots
 
 allow_refData = FALSE
 
-for (id in poolId_list){
+for (id in poolId_list[1]){
   source("_SCRIPTS/script_plotPool_v0.R") # makes calc
   
   cat(sprintf("#### %s <br>\n", poolName))
@@ -452,18 +452,35 @@ for (id in poolId_list){
   p1 <- LiqPlots_Trends() #plot1
   p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
   p3 <- LiqPlots_Swaps()
-  p4 <- LiqPlots_CumulEarn()
+  p4abs <- LiqPlots_PNL(type = "abs")
+  p4rel <- LiqPlots_PNL(type = "rel")
   p5 <- LiqPlots_plotAPY()
   
   cat("</div>\n")
   
   # Arrange plots (pathwork)
-  pw <- p1/p2/p3/p4/p5
   
-  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
+  #Plot L
+  pw_left <- p1/p2
+  
+  pw_left[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
+  pw_left[[1]] %<>% + theme(plot.background = element_rect(fill = "white"), panel.background = element_rect(fill = panel_color))
   #pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
   
-  pw <- pw + plot_layout(heights = c(6,6,4,2,2), nrow = 5)
+  pw_left <- pw_left + plot_layout(heights = c(6,6), nrow = 2)
+  
+  #Plot R
+  #pw_right <- ggplot(p4bis)/p3/p4/p5
+  #pw_right[[1]] %<>% + theme(plot.background = element_rect(fill = "white"), panel.background = element_rect(fill = panel_color))
+  pw_right <- p3/p4abs/p4rel/p5
+  pw_right[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
+  pw_right[[2]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) 
+  pw_right[[3]] %<>% + theme(plot.title = element_blank(), #suppress title
+                             axis.title.x = element_blank(), axis.text.x=element_blank()) 
+  pw_right <- pw_right + plot_layout(heights = c(6,4,3,4), nrow = 4)
+  
+  pw <- pw_left|pw_right
+  pw <- pw + plot_layout(widths = c(3,2), ncol = 2)
   print(pw)
   
   # Link to Binance pool

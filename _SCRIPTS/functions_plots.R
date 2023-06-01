@@ -14,19 +14,22 @@ LiqPlots_Trends <- function(nudge=TRUE){
   yLim_up <- max(start_price*(1+yLim_offset), max(pool_LAST$PoolPrice)*1.1, max(limits_DF$Limit_Price )*1.025)
   yLim_down <- min(start_price*(1-yLim_offset), min(pool_LAST$PoolPrice)*0.9, min(limits_DF$Limit_Price )*0.975)
   
-  # CONVERTS DATES to POSIXct
-  pool_LAST[,"Date_UTC"] %<>% as.POSIXct(tz = "UTC")
-  
   # OTHER QUICK CALC
   pool_LAST[,"Label"] <- ifelse(pool_LAST$PriceChange>1, paste0("Swap to ",coin2), paste0("Swap to ",coin1))
+  
+  # PLOT AESTHETICS
+  fullTitle <- sprintf("%s: %se [if HODL: %se (%s%s%%)]", #%% = '%'
+                       poolName, round(end_DF[,"ValueTOT"],2), round(end_hodl_TOT,2), 
+                       ifelse(end_valChange>0, "+", ""),  round(end_valChange*100,1)) # PLOT TITLE
   
   # PLOT
   plot0 <- pool_LAST %>%
     ggplot(aes(x=Date_UTC)) +
     theme_classic() +
     theme(panel.grid.major.y=element_line(), 
-          panel.grid.minor.y=element_line(linetype="dashed"))+
-    ggtitle(poolName)+
+          panel.grid.minor.y=element_line(linetype="dashed"),
+          legend.position="none")+
+    ggtitle(fullTitle)+
     scale_x_datetime(timezone = "UTC", limits = trends_lim) +
     scale_y_continuous(limits = c(yLim_down, yLim_up))+
     #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
@@ -86,9 +89,8 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
   
   # colorMatrix
   #Change background color if pool is "at risk"
-  if(end_ROInet<0){bg_color <- "orange"}
-  if(end_ROInet<(stopLossTolerance*-1)){bg_color <- "red"}
-  
+  if(end_ROInet_X100<0){bg_color <- "orange"}
+  if(end_ROInet_X100<(stopLossTolerance*-1)){bg_color <- "red"}
   
   ## 0. PLOT INIT
   fullTitle <- sprintf("%s: %se [if HODL: %se (%s%s%%)]", #%% = '%'
@@ -99,8 +101,9 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     ggplot(aes(x=Date_UTC)) +
     theme_classic() +
     theme(panel.grid.major.y=element_line(), 
-          panel.grid.minor.y=element_line(linetype="dashed"))+
-    ggtitle(fullTitle)+
+          panel.grid.minor.y=element_line(linetype="dashed"),
+          legend.position="none")+
+    #ggtitle(fullTitle)+
     scale_x_datetime(timezone = "UTC") +
     #scale_x_datetime(limits = plot_lim) + #v3.5: removed to allow stop-loss label to be plotted outside of area.
     xlab("Datetime (UTC)")
@@ -130,14 +133,8 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
   
   ## 3. ADD: Endpoints
   plot3 <- plot2 +
-    #coord_cartesian(xlim = c(xLim_left, xLim_right + 1000000)) + 
-    #> idea for the future: allow to expand grid size, so to be able to plot lables at the RIGHT of the plot.
-    #> example: https://mran.microsoft.com/snapshot/2017-08-20/web/packages/ggrepel/vignettes/ggrepel.html
     annotate("label", x = xLim_left, y=-0.0015, label=as.character(paste0("Entry Price: ",round(start_price,3),"")), size=3.5, hjust=0) +
-    #geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=0, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
-    #                 size=3.5, force = 1, fill= "white", direction="y", nudge_y = -0.002) +
     geom_point(data=limits_DF, aes(x=xLim_right, y=LimitX100), color= limits_DF$Color) + #add endpoint as scatterplot
-    # idea: http://www.sthda.com/english/wiki/ggplot2-texts-add-text-annotations-to-a-graph-in-r-software
     geom_label_repel(data=limits_DF, aes(x=xLim_right, y=LimitX100, label = Label_Extended),
                      fill= limits_DF$Color, #box col.
                      color= limits_DF$TextColor,#text col
@@ -148,7 +145,6 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
                      segment.linetype = 4, #"dotdash"
                      direction = "both", # segment direction: "both", "x", "y" #v3.5: changed to x
                      nudge_x = limits_DF$nudge_x, #v3.5 change: now pushes label to the RIGHT
-                     #nudge_x = -limits_DF$nudge_x, #pushes label to the left
                      nudge_y = limits_DF$nudge_y #pushes label up/downwards
     ) 
   
@@ -185,17 +181,19 @@ LiqPlots_Swaps <- function(){
     out_qnt <- end_DF[1,"Qnt1"]- start_qnt1
     out_coin <- coin1}
   
-  swap_Title <- sprintf("Swapped %s %s for %s %s [as if price: %s]", 
-                        signif(in_qnt, 3), in_coin, signif(out_qnt, 3), out_coin, round(out_qnt/in_qnt,2))
+  swap_text <- sprintf("Swapping %s %s for %s %s\n[as if price: %s %s]", 
+                        signif(in_qnt, 3), in_coin, signif(out_qnt, 3), out_coin, 
+                       round(end_DF[1,"Qnt2"]/end_DF[1,"Qnt1"],2), coin2) #price is always calculated as Coin2/Coin1
   
   #PLOT
   plot0 <- pool_LAST %>%
     ggplot(aes(x=Date_UTC)) +
-    ggtitle(swap_Title)+
+    ggtitle("Swapped Coins") +
+    #ggtitle(swap_Title)+
     theme_classic() +
     theme(panel.grid.major.y=element_line(), 
           panel.grid.minor.y=element_line(linetype="dashed"))+
-    scale_x_datetime(timezone = "UTC", limits = plot_nudged) +
+    scale_x_datetime(timezone = "UTC", limits = plot_lim) +
     scale_y_continuous(limits = c(-ySwap_range, ySwap_range),
                        labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
@@ -207,13 +205,25 @@ LiqPlots_Swaps <- function(){
     geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color=coin1), linewidth=1.5) +
     geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color=coin2), linewidth=1.5) +
     #geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
-    ylab("Coin Swaps")
+    ylab("Coin Swaps Effect (%)")
   
-  return(plot1)
+  plot2 <- plot1 +
+    geom_label_repel(data = tail(pool_SWAPS, 1), 
+                     aes(x=xLim_right, y=Swap1_X100, label = swap_text),
+                     size = 3, #text size
+                     force = 0.2, #repulsion force (avoid 2x labels to get too close) 
+                     min.segment.length = 0, #0 = always plot segment
+                     segment.linetype = 2, #"dash"
+                     nudge_y = 0.03,
+                     direction = "y" # segment direction: "both", "x", "y" 
+                     )
+  
+  return(plot2)
   
 }
 
-LiqPlots_CumulEarn <- function(){
+LiqPlots_PNL <- function(type="rel" #options are "abs" and "rel"
+                         ){
   #> Plots automatic swap events due to the prided liquidity
   #> pre-build to return differnt kind of outputs, but not it is only returning "rel%"
   
@@ -228,49 +238,52 @@ LiqPlots_CumulEarn <- function(){
   
   pool_MERGED %<>% replace_na(list("Cum_ValTOT" =0, "Cum_ValTOTx100" =0)) #replace NA with 0 (only needed for timepoints before frist Claim)
   pool_MERGED %<>% subset(!(is.na(operation)), select=c(colnames(pool_LAST), "Cum_ValTOT", "Cum_ValTOTx100")) #removes Claimed data, not required any longer
-  
+  pool_MERGED[,"ROI%"] <- with(pool_MERGED, Cum_ValTOTx100-abs(IL))
+  pool_MERGED[,"ROI_net"] <- with(pool_MERGED, ValueTOT-start_value+Cum_ValTOT) #Value now - Value start (aka: IL) + Earn
   
   ## PLOT AESTETICS
-  yLim_offset <- 0.05 # 5%
-  maxSwap <- max(abs(c(pool_LAST$Swap1_X100, pool_LAST$Swap2_X100)))
+  yLim_offset <- 0.0025 # 0.25%
+  yMax_rel <- max(pool_MERGED$`ROI%`, yLim_offset)
+  yMin_rel <- min(-abs(pool_MERGED$IL), -yLim_offset)
   
-  ySwap_range <- max(yLim_offset, maxSwap)*1.1 #applyes to both up and down (symmetrical)
+  yMax_abs <- max(1, pool_MERGED$ROI_net) #min 1 USD
+  yMin_abs <- min(-0.10, with(pool_MERGED, ValueTOT-start_value)) #min 0.1 USD
   
   #PLOT 
   plot0 <- pool_LAST %>%
     ggplot(aes(x=Date_UTC)) +
+    ggtitle("PNL vs HODL") +
     theme_classic() +
     theme(panel.grid.major.y=element_line(), 
           panel.grid.minor.y=element_line(linetype="dashed"))+
-    scale_x_datetime(timezone = "UTC", limits = plot_nudged) +
-    xlab("Datetime (UTC)")
+    scale_x_datetime(timezone = "UTC", limits = plot_lim) +
+    xlab("Datetime (UTC)")+
+    geom_hline(yintercept = 0, color="black")
   
   ## A. Plot Values
   plotA <- plot0 +
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=0, color="HODL"), linewidth=1) +
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT - end_hodl_TOT,  color="IL"), linewidth=1) +
-    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT+Cum_ValTOT-end_hodl_TOT,  color="Earn"), linewidth=1) +
-    ylab("vs HODL (value)")
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT+Cum_ValTOT-end_hodl_TOT,  color="PNL"), linewidth=1) +
+    scale_y_continuous(limits = c(yMin_abs, yMax_abs),
+                       #minor_breaks = seq(-0.5, 0.5,0.001), 
+                       #breaks=seq(-0.5, 0.5, 0.0025)
+                       ) +
+    ylab(sprintf("Value (%s)", refCoin))
   
   ## B. Plot Relative Values
   plotB <- plot0 +
-    scale_y_continuous(labels = scales::percent_format(accuracy = 0.1),
-                       #minor_breaks = seq(-5, 5, 0.001), 
-                       breaks=seq(-0.5, 0.5, 0.001)) +
-    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL),  color="IL"), linewidth=1) +
-    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL)+Cum_ValTOTx100,  color="Earn"), linewidth=1) +
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=0, color="HODL"), linewidth=1) +
-    ylab("vs HODL (%)")
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL),  color="IL"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL)+Cum_ValTOTx100,  color="PNL"), linewidth=1) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 0.1), limits = c(yMin_rel, yMax_rel),
+                       minor_breaks = seq(-0.5, 0.5,0.001), 
+                       breaks=seq(-0.5, 0.5, 0.0025)) +
+    ylab("PNL %")
   
-  # Arrange plots (pathwork)
-  pw <- plotA/plotB
-  
-  pw[[1]] = pw[[1]] + theme(axis.title.x = element_blank()) # Remove x.axis title from first subplot
-  pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
-  
-  pw <- pw + plot_layout(heights = c(1,1), nrow = 2)
-  
-  return(plotB)
+  if(type=="abs"){return(plotA)}
+  if(type=="rel"){return(plotB)}
+  else{message('Error in LiqPool_PNL, accepted types are "abs" and "rel"')}
   
 }
 
@@ -283,7 +296,6 @@ LiqPlots_plotAPY <- function(){
   
   nudge_x <- (datetime_to_sec(xLim_right)- datetime_to_sec(xLim_right)) %>% #distance (in UNIX time!) from label and datapoint.
     as.numeric()*0.4 #multiply by 0.4 (size of 2/5 of the plot area)) #v3.5 changed from 0.2
-  #plot_lim[2] <-  plot_lim[2] + nudge_x
   
   ## Y-RANGE #set max Y to avoid sudden peaks to change the scale
   
@@ -304,34 +316,36 @@ LiqPlots_plotAPY <- function(){
   
   #min value between max iAPY and 4x (last) Cumul EARN 
   ylimMax <- min(maxAPY*1.1, lastCumAPY*3)
-  #y_increment <- 0.01 #min increment to show ABOVE ymax set to 5% incremeents
-  #ylimMax <- ((ylimData%/%y_increment)+1)* y_increment #finds the quotient, add 1, then multiply for desired increment
   
   # % label
-  lastCumAPY_label <- (round(lastCumAPY,3)*100) %>% #last value, time 100
+  lastCumAPY_label <- (round(lastCumAPY*100,1)) %>% #last value, time 100
     as.character() %>% paste0("APY (tot): ",.,"%") 
   
   ## PLOT AESTETICS
   ## PLOT 1: APY (tot)
   plot <- claim_CALC %>%
     ggplot(aes(x=Date_UTC, group=1)) + 
-    geom_line(aes(y=APY_1, color=coin1), linewidth=0.75) +
-    geom_line(aes(y=APY_2, color=coin2), linewidth=0.75) +
-    geom_line(aes(y=APY_3, color=coin3), linewidth=0.75) +
+    ggtitle("Yield (APY)") + 
+    scale_x_datetime(timezone = "UTC", limits = plot_lim) +
     
-    geom_line(aes(y=APY_TOT, color="TOT"), color="black", linetype="dashed", size=0.75) +
+    # Formulas on APY achieve the effect of line stacking. (APY2 is added to APY1 and so on)
+    #> implmentet a more elegant solution once I have time
+    geom_area(aes(y=((APY_1+APY_2)/2)+APY_3, fill=coin3), linewidth=0.75) +
+    geom_area(aes(y=(APY_1+APY_2)/2, fill=coin2), linewidth=0.75) + #contributes to 1/2 of earning
+    geom_area(aes(y=(APY_1)/2, fill=coin1), linewidth=0.75) + #contributes to 1/2 of earning
+    
+    geom_line(aes(y=APY_TOT, color="TOT"), color="black", linetype="dashed", linewidth=0.75) +
     
     xlab("Datetime (UTC)") +
     ylab("APY %") +
     geom_hline(yintercept = 0) + 
     
     #scale_x_datetime(limits = plot_lim) + #v3.5: removed
-    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,ylimMax)) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 0.1), limits = c(0,ylimMax)) +
     
     theme_classic() +
     theme(panel.grid.major.y=element_line(), panel.grid.minor.y=element_line(linetype="dotted"))
   
-  #v3.5: added endpoint labeling
   plot <- plot +
     geom_label_repel(data = tail(claim_CALC, 1), 
                      aes(x=xLim_right, y=lastCumAPY, label = lastCumAPY_label),
@@ -341,8 +355,9 @@ LiqPlots_plotAPY <- function(){
                      force = 0.2, #repulsion force (avoid 2x labels to get too close) 
                      min.segment.length = 0, #segments , this size as not plotted
                      segment.linetype = 2, #"dash"
-                     direction = "x", # segment direction: "both", "x", "y" 
+                     direction = "both", # segment direction: "both", "x", "y" 
                      nudge_x = nudge_x,
+                     nudge_y = lastCumAPY*1.2,
                      na.rm = T
     )
   
@@ -366,7 +381,7 @@ plotLimits.Calc <- function(stopLossTolerance = 0.01,
   
   # BreakEven Limits (earnings)
   limits_df[,"BE_X100"] <- ifelse(limits_df[,"Direction"]=="DOWN", #change sign if Direction == "DOWN"
-                                  -end_maxEarm, end_maxEarm) 
+                                  -end_maxEarnX100, end_maxEarnX100) 
   
   # Adjusted StopLoss (includes earnings)
   limits_df[,"SL_X100adj"] <- limits_df[,"SL_X100"] + limits_df[,"BE_X100"]
