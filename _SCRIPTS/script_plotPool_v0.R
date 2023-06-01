@@ -138,7 +138,8 @@ end_price <- end_DF[1,"PoolPrice"]
 
 # from last between claim and pool_LAST
 end_date <- max(claim_CALC$Date_UTC, pool_LAST$Date_UTC) #whichever is higher
-end_maxEarm <- claim_CALC$Cum_ValTOTx100 %>% tail(1) #last entry
+end_maxEarn <- claim_CALC$Cum_ValTOT %>% tail(1) #last entry
+end_maxEarnX100 <- claim_CALC$Cum_ValTOTx100 %>% tail(1) #last entry
 
 # HODL calculation. Value if 
 end_hodl1 <- start_qnt1*price1
@@ -146,7 +147,9 @@ end_hodl2 <- start_qnt2*price2
 end_hodl_TOT <- end_hodl1+end_hodl2
 
 # ROI and background color
-end_ROInet <- end_maxEarm-abs(end_DF[1,"IL"]) 
+end_valChange <- (end_DF[,"ValueTOT"]/start_value)-1
+end_ROInet <- end_DF[,"ValueTOT"]-start_value+end_maxEarn 
+end_ROInet_X100 <- end_maxEarnX100-abs(end_DF[1,"IL"]) 
 
 # MOVE into PLOT part?
 limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss) 
@@ -159,6 +162,12 @@ limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss)
 # PART 3: PLOT ASSEMBLY ####
 
 ##> COMMON plot aesthetics ####
+
+#Change BACKGROUND color if pool is "at risk"
+bg_color <- "white"
+if(end_ROInet_X100<0){bg_color <- "orange"}
+if(end_ROInet_X100<(setStopLoss*-1)){bg_color <- "red"}
+panel_color <- bg_color
 
 ###> X-RANGE options
 # calculate xLim (min and max dates)
