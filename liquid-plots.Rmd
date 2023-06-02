@@ -14,7 +14,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -165,8 +165,8 @@ if(run_api){
   liq.df <- liquidity.tableInterpreter(liq.j.path) 
   
   # TEMP WORKAROUND
-          message("FITER APPLIED: only selected pools are kept")            #TEMP
-          liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX|BNB|FTT", liq.df$poolName))  #TEMP
+  #        message("FITER APPLIED: only selected pools are kept")            #TEMP
+  #        liq.df %<>% subset(grepl("BTC|ETH|SOL|DOGE|GMX|BNB|FTT", liq.df$poolName))  #TEMP
   
   liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
   write.csv2(liq.df, liq.df.path, row.names = F)
@@ -201,7 +201,7 @@ This includes Pool Operations (ADD/REMOVE) and Rewards Claims
 _only data from the pools above is downloaded_
 
 
-```{r singlePools, results="hold"}
+```{r api-singlePools, results="hold"}
 # MAX trx x pool is 100. Use pagination if more is required (may be required for Claims)
 
 max_iter = 10 #so far, only applies to Claimed. operations does not requires that
@@ -444,7 +444,7 @@ setStopLoss <- 0.005 #set desired stop loss for plots
 
 allow_refData = FALSE
 
-for (id in poolId_list[1]){
+for (id in poolId_list){
   source("_SCRIPTS/script_plotPool_v0.R") # makes calc
   
   cat(sprintf("#### %s <br>\n", poolName))
