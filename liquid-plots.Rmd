@@ -23,48 +23,21 @@ run_plots = TRUE
 
 ```{r init, include=FALSE}
 #If not installed yet, install pacman package manager by "uncommenting" the line below
-#install.packages("pacman")
 
-### Dependences
-#> API requests
-pacman::p_load('digest') #https://www.rdocumentation.org/packages/digest/versions/0.6.29/topics/hmac
-pacman::p_load('httr') #API tools #https://www.dataquest.io/blog/r-api-tutorial/
-pacman::p_load('jsonlite')
+#install.packages("pacman") #this is only required on first run.
 
-#> Data Analysis 
-pacman::p_load('magrittr')
-pacman::p_load('stringr')
-pacman::p_load("tidyverse")
-#pacman::p_load("data.table")
-pacman::p_load("lubridate")
+#If not installed yet, pacman will download and install all required packages on the first run of the script.
+source("_SCRIPTS/init_externalLibs.R") 
 
-#> Data visualization
-pacman::p_load('kableExtra')
-pacman::p_load("ggplot2")
-pacman::p_load("ggrepel")
-pacman::p_load("patchwork") #GUIDE: https://aosmith.rbind.io/2019/05/13/small-multiples-plot/
-
-#general options
-options(digits = 12) #max decimal digits
-options(scipen=999) #scientific notation threshold
+source("_SCRIPTS/init_functions.R")
+source("_SCRIPTS/init_plots.R")
+source("_SCRIPTS/init_dirs.R")
 ```
 
 ```{r dirs and functions, include=FALSE}
 # IMPORT: download of ORIGINAL data only 
-dir.IN <- 'DOWNLOADS/' %T>% dir.create(showWarnings = F)
-dir.IN.single <- paste0(dir.IN, "SinglePools/")  %T>% dir.create(showWarnings = F)
 
-dir.TABLES <- 'TABLES/' %T>% dir.create(showWarnings = F)
-dir.TABLES.single <-  paste0(dir.TABLES, "SinglePools/") %T>% dir.create(showWarnings = F)
 
-dir.REF <- 'REFDATA/' %T>% dir.create(showWarnings = F)
-dir.REF.single <-  paste0(dir.REF, "SinglePools/") %T>% dir.create(showWarnings = F)
-
-#for reference:
-  "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/@SCRIPTS//Binance_FUNCTIONS_v1.9.R"
-
-source("_SCRIPTS/functions_data.R")
-source("_SCRIPTS/functions_plots.R")
 ```
 
 ---
