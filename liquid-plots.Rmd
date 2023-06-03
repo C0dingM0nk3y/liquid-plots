@@ -92,7 +92,7 @@ Download to: `r dir.IN`\
 
 ***
 #### GET: PRICES
-Latest SPOT prices from Binance
+Latest SPOT prices from Binance. Used for HODL vs. LP calculation\
 
 ```{r price, results="hold"}
 # DOWNLOAD PRICES
@@ -263,7 +263,7 @@ if(run_api==FALSE){
  
   if(fullDataset==FALSE){
     message("FITER APPLIED: only selected pools are kept")            #TEMP
-    liq.df %<>% subset(grepl("BTC|ETH|THETA|STG|VET|MATIC|ONE|LINK|ADA|ALGO|ID|RUNE", liq.df$poolName))}  #TEMP
+    liq.df %<>% subset(grepl("BTC|ETH|STG|RUNE", liq.df$poolName))}  #TEMP
   
    }
   
