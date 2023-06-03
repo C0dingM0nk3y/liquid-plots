@@ -117,7 +117,7 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
     scale_y_continuous(labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
                        breaks=seq(-5, 5, 0.005)) +
-    ylab("Impermanent Loss (%)| Cumul Earnings (%)") +
+    ylab("IL (%)| Cumul. Earn (%)") +
     geom_hline(yintercept = 0)
 
   
@@ -198,6 +198,7 @@ LiqPlots_Swaps <- function(){
                        labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
                        breaks=seq(-0.5, 5, 0.05)) +
+    geom_hline(yintercept = 0)
     xlab("Datetime (UTC)")
   
   ## 1. ADD: Swap data
@@ -214,7 +215,7 @@ LiqPlots_Swaps <- function(){
                      force = 0.2, #repulsion force (avoid 2x labels to get too close) 
                      min.segment.length = 0, #0 = always plot segment
                      segment.linetype = 2, #"dash"
-                     nudge_y = 0.03,
+                     nudge_y = 0.01,
                      direction = "y" # segment direction: "both", "x", "y" 
                      )
   
@@ -300,13 +301,13 @@ LiqPlots_plotAPY <- function(){
   ## Y-RANGE #set max Y to avoid sudden peaks to change the scale
   
   # CALC: move elsewhere?
-  claim_CALC[, "timeDiff_D"] <- (claim_CALC[,"Date_UTC"]-start_date) %>% #already exprered in days
+  claim_CALC[, "timeDiff_D"] <- (as.Date(claim_CALC[,"Date_UTC"])-as.Date(start_date)) %>% #already exprered in days
     round(2) %>% as.numeric() #round and converts to numeric
   claim_CALC[, "APY_1"] <- with(claim_CALC, `Cum_%1`/timeDiff_D*365)
   claim_CALC[, "APY_2"] <- with(claim_CALC, `Cum_%2`/timeDiff_D*365)
   claim_CALC[, "APY_3"] <- with(claim_CALC, `Cum_Val3`/end_DF[1,"ValueTOT"]/timeDiff_D*365) #Calculated on Value, not Qnt
-  claim_CALC[, "APY_TOT"] <- with(claim_CALC, ((APY_1+APY_2)/2) +APY_3)
-  claim_CALC[, "APY_TOT2"] <- with(claim_CALC, Cum_ValTOTx100/timeDiff_D*365) # SANITY CHECK. Results is basically the same
+  claim_CALC[, "APY_TOT2"] <- with(claim_CALC, ((APY_1+APY_2)/2) +APY_3)
+  claim_CALC[, "APY_TOT"] <- with(claim_CALC, Cum_ValTOTx100/timeDiff_D*365) # SANITY CHECK. Results is basically the same
   
   maxAPY <- max(claim_CALC$APY_1, claim_CALC$APY_2, claim_CALC$APY_3, 
                 claim_CALC$APY_TOT, 
@@ -357,7 +358,7 @@ LiqPlots_plotAPY <- function(){
                      segment.linetype = 2, #"dash"
                      direction = "both", # segment direction: "both", "x", "y" 
                      nudge_x = nudge_x,
-                     nudge_y = lastCumAPY*1.2,
+                     nudge_y = lastCumAPY*0.2,
                      na.rm = T
     )
   
