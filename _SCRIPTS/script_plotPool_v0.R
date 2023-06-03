@@ -183,4 +183,43 @@ plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 #### WORK IN PROGRESS ####
 
 # PLOT
+cat(sprintf("###### %s <br>\n", poolName))
+cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
+p1 <- LiqPlots_Trends() #plot1
+p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
+p3 <- LiqPlots_Swaps()
+p4abs <- LiqPlots_PNL(type = "abs")
+p4rel <- LiqPlots_PNL(type = "rel")
+p5 <- LiqPlots_plotAPY()
 
+
+# Arrange plots (pathwork)
+
+#Plot L
+pw_left <- p1/p2
+
+pw_left[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
+pw_left[[1]] %<>% + theme(plot.background = element_rect(fill = bg_color))
+pw_left[[2]] %<>% + theme(plot.background = element_rect(fill = bg_color))
+#pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
+
+pw_left <- pw_left + plot_layout(heights = c(6,6), nrow = 2)
+
+#Plot R
+#pw_right <- ggplot(p4bis)/p3/p4/p5
+#pw_right[[1]] %<>% + theme(plot.background = element_rect(fill = "white"), panel.background = element_rect(fill = panel_color))
+pw_right <- p3/p4abs/p4rel/p5
+pw_right[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
+pw_right[[2]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) 
+pw_right[[3]] %<>% + theme(plot.title = element_blank(), #suppress title
+                           axis.title.x = element_blank(), axis.text.x=element_blank(), legend.position = "none") 
+pw_right <- pw_right + plot_layout(heights = c(6,4,3,4), nrow = 4)
+
+pw <- pw_left|pw_right
+pw <- pw + plot_layout(widths = c(3,2), ncol = 2)
+print(pw)
+
+cat("</div>\n")
+
+# Link to Binance pool
+cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
