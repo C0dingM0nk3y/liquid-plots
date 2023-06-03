@@ -140,8 +140,8 @@ if(run_api){
 
   if(fullDataset==FALSE){
     message("FITER APPLIED: only selected pools are kept")            #TEMP
-    liq.df %<>% subset(grepl("BTC|ETH|THETA|STG|VET|MATIC|ONE|LINK|ADA|ALGO|ID|RUNE", liq.df$poolName))  #TEMP
-  }
+    liq.df %<>% subset(grepl("BTC|ETH|STG|RUNE", liq.df$poolName))  #TEMP
+ 
   
   liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
   write.csv2(liq.df, liq.df.path, row.names = F)
@@ -176,7 +176,7 @@ This includes Pool Operations (ADD/REMOVE) and Rewards Claims
 _only data from the pools above is downloaded_
 
 
-```{r singlePools, results="hold"}
+```{r api-singlePools, results="hold"}
 # MAX trx x pool is 100. Use pagination if more is required (may be required for Claims)
 
 max_iter = 10 #so far, only applies to Claimed. operations does not requires that
@@ -262,7 +262,7 @@ if(run_api==FALSE){
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
  
   if(fullDataset==FALSE){
-    message("FITER APPLIED: only selected pools are kept")            #TEMP
+    message("FILTER APPLIED: only selected pools are kept")            #TEMP
     liq.df %<>% subset(grepl("BTC|ETH|STG|RUNE", liq.df$poolName))}  #TEMP
   
    }
