@@ -1,3 +1,6 @@
+# init_functions.R
+
+
 binanceTimestamp <- function(binanceURL = "https://api.binance.com"){
   #> Get current Binance timestamp for API request signature
   ts <- GET(paste0(binanceURL,'/api/v3/time'))
@@ -43,8 +46,12 @@ BINANCE.GET <- function(API_root,
   if(request$status_code==200){ #error capture
     cat("\t>> DOWNLOADED\n")}
   else{
-    message(paste0("ERROR on API CALL:", API_query))
-    print(request)}
+    message(paste0("\nERROR on API CALL:", API_query, " (see below)"))
+    message("Try read documentation on Binance website: https://binance-docs.github.io/apidocs/spot/en/#general-api-information")
+    
+    print(request)
+    print(content(request, as = "parsed"))
+    }
   
   #PARSE as JSON
   json <- content(request, as = "parsed") #json interpreter
