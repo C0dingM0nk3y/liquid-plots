@@ -12,10 +12,19 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 # {.tabset}
 
+[] Add descriptions\ 
+[] Change order of downloads\ 
+[x] Improve coin filter\ 
+[] Wrap ref data into zip file\
+[] Claim from start\
+
+
 ```{r code_folding="none"}
 #RUN OPTIONS
-run_api = FALSE #toggle TRUE/FALSE to skip some parts of this script
-  fullDataset = FALSE
+run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
+  downloadSubset = TRUE
+  useSubset = FALSE
+  subset_list <- c("BTC|ETH|STG|RUNE")
 run_analysis = TRUE
 run_plots = TRUE
 ```
@@ -26,18 +35,12 @@ run_plots = TRUE
 
 #install.packages("pacman") #this is only required on first run.
 
-#If not installed yet, pacman will download and install all required packages on the first run of the script.
 source("_SCRIPTS/init_externalLibs.R") 
+#If not installed yet, pacman will download and install all required packages on the first run of the script.
 
 source("_SCRIPTS/init_functions.R")
 source("_SCRIPTS/init_plots.R")
 source("_SCRIPTS/init_dirs.R")
-```
-
-```{r dirs and functions, include=FALSE}
-# IMPORT: download of ORIGINAL data only 
-
-
 ```
 
 ---
@@ -86,7 +89,7 @@ Data will be recovered from [`r API_root`] using the following credentials:\
 
 ### DOWNLOAD Binance Data [API]
 
-for info, refer to see: https://binance-docs.github.io/apidocs/spot/en/#change-log\
+for info, refer to: https://binance-docs.github.io/apidocs/spot/en/#change-log\
 Download to: `r dir.IN.single`\
 Download to: `r dir.IN`\
 
@@ -138,9 +141,9 @@ if(run_api){
   #> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
   liq.df <- liquidity.tableInterpreter(liq.j.path) 
 
-  if(fullDataset==FALSE){
+  if(downloadSubset){
     message("FITER APPLIED: only selected pools are kept")            #TEMP
-    liq.df %<>% subset(grepl("BTC|ETH|STG|RUNE", liq.df$poolName))  #TEMP
+    liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
  
   
   liq.df.path <- paste0(dir.IN, "API_liquidity_unpacked.csv")
@@ -261,9 +264,9 @@ if(run_api==FALSE){
   price.df <- read.csv2(paste0(dir.IN,"API_price_unpacked.csv"))
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
  
-  if(fullDataset==FALSE){
+  if(useSubset){
     message("FILTER APPLIED: only selected pools are kept")            #TEMP
-    liq.df %<>% subset(grepl("BTC|ETH|STG|RUNE", liq.df$poolName))}  #TEMP
+    liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
   
    }
   
