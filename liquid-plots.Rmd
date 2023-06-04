@@ -17,6 +17,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 [x] Improve coin filter\ 
 [] Wrap ref data into zip file\
 [] Claim from start\
+[] Chang plot var names so to erase previous data
 
 
 ```{r code_folding="none"}
@@ -45,7 +46,7 @@ source("_SCRIPTS/init_dirs.R")
 
 ---
 
-## Part 1: DATA-DOWNLOAD
+## AUTHENTICATION
 
 ---
 
@@ -61,22 +62,19 @@ prKey;YOUR-PRIVATE-KEY\
 #API address
 API_root <- "https://api.binance.com" 
   
-if(run_api){
-  myPrivatePath <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #TEMP
-  
-  #Import credentials
-  #keys <- read.csv2("credentials.txt", col.names = c("Type", "Key"), header = F)
-  keys_import <- read.csv2(myPrivatePath, col.names = c("Type", "Key"), header = F)
-  
-  key_public <- keys_import[1,"Key", drop=T]
-  key_private <- keys_import[2,"Key", drop=T]
-  rm("keys_import")
-  
-  #USER FEEDBACK
-  if(key_public=="YOUR-BINANCE-API-KEY"){
-    stop("STOP: add your Binance API credential to /credential.txt (; separated)")
-  }
-}
+myPrivatePath <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #TEMP
+
+#Import credentials
+#keys <- read.csv2("credentials.txt", col.names = c("Type", "Key"), header = F)
+keys_import <- read.csv2(myPrivatePath, col.names = c("Type", "Key"), header = F)
+
+key_public <- keys_import[1,"Key", drop=T]
+key_private <- keys_import[2,"Key", drop=T]
+rm("keys_import")
+
+#USER FEEDBACK
+if(key_public=="YOUR-BINANCE-API-KEY"){
+  stop("STOP: add your Binance API credential to /credential.txt (; separated)")}
 ```
 
 Data will be recovered from [`r API_root`] using the following credentials:\
@@ -87,11 +85,12 @@ Data will be recovered from [`r API_root`] using the following credentials:\
 
 ---
 
-### DOWNLOAD Binance Data [API]
+## 1.: PORTFOLIO OVERVIEW
 
+### DOWNLOAD Binance Data [API]
 for info, refer to: https://binance-docs.github.io/apidocs/spot/en/#change-log\
-Download to: `r dir.IN.single`\
 Download to: `r dir.IN`\
+Download to: `r dir.IN.single`\ 
 
 ***
 #### GET: PRICES
@@ -104,17 +103,19 @@ if(run_api){
   
   price.j.path <- paste0(dir.IN, "API_price.json")
   
-  price.j <- BINANCE.GET(API_root, "/api/v3/ticker/price") #download Binance latest Prices
+  price.j <- BINANCE.GET(API_root, "/api/v3/ticker/price", output = "both") #download Binance latest Prices
   
-  write_json(price.j, price.j.path, auto_unbox=TRUE) #export
+  request <- price.j[[1]] 
+  json <- price.j[[2]]
+  
+  write_json(json, price.j.path, auto_unbox=TRUE) #export
   cat("\t-> saved to: ", price.j.path, "\n")
   
   price.df <- fromJSON(price.j.path, simplifyVector = TRUE,
                      flatten = TRUE) #automatically UN-Nest nested columns
   
   #append price datastamp (from file last edit)
-  timestamp <- file.info(price.j.path)$mtime %>% as.POSIXct(tz="UTC") %>% 
-    round(0) #this is to remove msec from time
+  timestamp <- request$date %>% as.POSIXct(tz="UTC")
   price.df[,"timestamp_UTC"] <- as.character(timestamp)
   
   write.csv2(price.df, file = str_replace(price.j.path, pattern = ".json", "_unpacked.csv"), row.names = F)

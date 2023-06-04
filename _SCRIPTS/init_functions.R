@@ -11,7 +11,9 @@ BINANCE.GET <- function(API_root,
                         API_query,
                         API_param = "",
                         timestamp = FALSE,
-                        sign= FALSE){
+                        sign= FALSE,
+                        output = "content" #options are "request/content/both"
+                        ){
   #> wrapper to call API queries from Binance server
   #> Print user feedback if ERROR
   
@@ -54,9 +56,14 @@ BINANCE.GET <- function(API_root,
     }
   
   #PARSE as JSON
-  json <- content(request, as = "parsed") #json interpreter
+  cont <- content(request, as = "parsed")
   
-  return(json)
+  if (output=="content"){return(cont)} #default
+  else if (output=="request"){return(request)} 
+  else if (output=="both"){return(list(request, cont))} 
+  else{
+    out_options <- c("request", "content", "both")
+    stop(sprintf("output='%s' not supported.\n\t Valid options are: '%s'", output, paste(out_options, collapse = "', '")))}
 }
 
 liquidity.tableInterpreter <- function(jsonPath){
