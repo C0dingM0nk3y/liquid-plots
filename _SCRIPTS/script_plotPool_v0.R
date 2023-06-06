@@ -183,7 +183,8 @@ plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 #### WORK IN PROGRESS ####
 
 # PLOT
-cat(sprintf("###### %s <br>\n", poolName))
+cat(sprintf("###### <span style='background-color:%s;'> %s </span><br>\n",bg_color, poolName))
+# cat(sprintf("###### %s <br>\n", poolName))
 cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
 p1 <- LiqPlots_Trends() #plot1
 p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2

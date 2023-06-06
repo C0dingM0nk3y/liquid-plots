@@ -422,7 +422,7 @@ if(run_analysis){
 TO IMPLEMENT\
 [x] automated plotting\
 [x] link to Binance pool\
-[ ] link to source data\
+[x] link to source data\
 [ ] color coded tabs\
 [x] Subgroups\
 [x] Plot margins\
@@ -536,7 +536,7 @@ Notes on PNL vs. HODL plots: \
 _why does IL/IG looks different on the 2 plots?_\
 <ul>
   <li>
-  PNL (USDT) plots uses "live" IL: that means that something that in the "past" may have been an IL (in case of exit) now look as an impermanet gain (because price of assed has changed meanwhile)\
+  PNL (USDT) plots uses "live" IL: that means that something that in the "past" may have been an IL (in case of exit) now look as an impermanent gain (because price of asset has changed meanwhile)\
 _This view seems more useful to me to people who enter and exit pool often, as the want to     consolidate their IG._
   </li>
   <li>
