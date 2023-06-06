@@ -423,7 +423,7 @@ TO IMPLEMENT\
 [x] automated plotting\
 [x] link to Binance pool\
 [x] link to source data\
-[ ] color coded tabs\
+[x] color coded tabs\
 [x] Subgroups\
 [x] Plot margins\
 [ ] Summary table (Analysis part)\
@@ -523,6 +523,8 @@ for (sl in c(0.001, 0.005, 0.01)){
   
   for (id in list_higVal[1:3]){
     source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+    cat("***\n")
+    cat("\n")
   }
 }
 
