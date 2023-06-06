@@ -19,14 +19,23 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 [] Claim from start\
 
 
-```{r code_folding="none"}
+```{r general-options, code_folding="none"}
 #RUN OPTIONS
-run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
-  downloadSubset = TRUE
-  useSubset = FALSE
-  subset_list <- c("BTC|ETH|STG|RUNE")
+#limit downlod to specific sublist (for troubleshooting purposes)
+subset_list <- c("BTC|ETH|STG|RUNE") #use REGEX syntax 
+
+
+#toggle TRUE/FALSE to skip some parts of this script
+run_api = FALSE # dowload data/usel local
+  subset_download = TRUE #FALSE = use full data
 run_analysis = TRUE
+  subset_analysis = TRUE #FALSE = use full data
 run_plots = TRUE
+```
+
+```{r plot-options }
+#ANALYSIS OPTIONS
+temp = 1
 ```
 
 
@@ -141,7 +150,7 @@ if(run_api){
   #> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
   liq.df <- liquidity.tableInterpreter(liq.j.path) 
 
-  if(downloadSubset){
+  if(subset_download){
     message("FITER APPLIED: only selected pools are kept")            #TEMP
     liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
  
@@ -249,7 +258,7 @@ if(run_api){
 
 ```{r cleanup1}
 var_all <- ls()
-var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run|API|key|full", value=T),
+var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run|API|key|full|subset", value=T),
               lsf.str()) # all functions names, also considered variables
 var_rm <- setdiff(var_all,var_keep)              
 rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
@@ -264,7 +273,7 @@ if(run_api==FALSE){
   price.df <- read.csv2(paste0(dir.IN,"API_price_unpacked.csv"))
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
  
-  if(useSubset){
+  if(subset_analysis){
     message("FILTER APPLIED: only selected pools are kept")            #TEMP
     liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
   
@@ -448,7 +457,7 @@ list_rest <- poolId_list_original %>%
   setdiff(list_longTime)
 ```
 
-#### Subsection{.tabset}
+#### Subgroups{.tabset}
 somethings
 
 ##### Group 1{.tabset}
@@ -481,22 +490,33 @@ for (id in list_longTime){
 
 
 ##### Group 3{.tabset}
-Pools that are just there for research purpose
-Plotted 2x: second time with 1% stop loss (instead than 0.5%)
+Other plots
 
 ```{r plots3, results='asis', fig.align='center', fig.height=6, fig.width=10}
-
-setStopLoss <- 0.005 #set desired stop loss for plots
+setStopLoss <- 0.01 #set desired stop loss for plots
 
 allow_refData = FALSE
 
 for (id in list_rest){
   source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+  }
+```
+
+#### Stop-loss param{.tabset}
+Effect of stop-loss parameter \
+_note: this applies only to on a subset of pools (max 3)_
+
+```{r plots4, results='asis', fig.align='center', fig.height=6, fig.width=10}
+allow_refData = FALSE
+
+for (sl in c(0.001, 0.005, 0.01)){
+  setStopLoss <- sl #set desired stop loss for plots
+  
+  cat(sprintf("##### SL: %s%% <br>\n", round(setStopLoss*100,2)))
+  
+  for (id in list_higVal[1:3]){
+    source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+  }
 }
 
-
-setStopLoss <- 0.01 #set desired stop loss for plots
-for (id in list_rest){
-  source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
-  }
 ```
