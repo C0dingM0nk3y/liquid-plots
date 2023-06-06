@@ -28,18 +28,24 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 [x] Claim from start \
 [] Chang plot var names so to erase previous data
 
-Options: \
-
+General options: \
 ```{r options, code_folding="none"}
 #RUN OPTIONS
 run_api = TRUE #toggle TRUE/FALSE to skip some parts of this script
-  downloadSubset = TRUE
-  useSubset = TRUE
-  subset_list <- c("BTC") #can be used to restrict analysis to a specific sibset of poolNames/Coins. Use REGEX syntax.
+  subset_download = TRUE
+  subset_analysis = TRUE
+  subset_list <- c("BTC|ETH|RUNE|STG") #can be used to restrict analysis to a specific sibset of poolNames/Coins. Use REGEX syntax.
 run_analysis = TRUE
 run_plots = TRUE
 
 refCoin = "USDT" #reference coin to express prices
+```
+
+Plot options: \
+```{r plot-options}
+setStopLoss <- 0.005 #set desired stop loss for plots
+
+allow_refData = FALSE
 ```
 
 
@@ -58,10 +64,13 @@ source("_SCRIPTS/init_dirs.R")
 
 ---
 
-### API address and credentials
+## 1. DATA
+
+##### API address and credentials
 > First time istructions:\
-Import USER_KEY from *"/credentials.txt"*\
-Use format below and save as into [root dir] as *'credentials.txt'*:\
+USER_KEY is imported from local file: *"/credentials.txt"*\
+Recover data from your Binance account, then save into [root dir]: \
+use format below, and name the file as *'credentials.txt'*:\
 <p style="margin-left: 40px">
 key;YOUR-BINANCE-API-KEY\
 prKey;YOUR-PRIVATE-KEY\
@@ -93,8 +102,6 @@ Data recovered from [`r API_root`] using the following credentials:\
 </p>
 
 ---
-
-## 1. DOWNLOAD
 
 ##### DOWNLOAD Binance Data [API]
 for info, refer to: https://binance-docs.github.io/apidocs/spot/en/#change-log\
@@ -138,7 +145,6 @@ if(run_api){
 }
 ```
 
-Latest prices timestamp: **`r price.df[1,"timestamp_UTC", drop= TRUE]`**\ 
 
 ***
 ##### GET: CURRENT POOLS
@@ -158,7 +164,7 @@ if(run_api){
   #> this function does not ONLY unpack liquidity data, but it also unpivot the table, to make it readable
   liq.df <- liquidity.tableInterpreter(liq.j.path) 
 
-  if(downloadSubset){
+  if(subset_download){
     message("FILTER on DOWNLOAD: only selected pools are downloaded")            #TEMP
     liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
  
@@ -171,7 +177,7 @@ if(run_api){
   
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))}
 
-if(useSubset){
+if(subset_analysis){
   message("FILTER on CALC: only selected pools are shown")  
   tot_pools <- nrow(liq.df)
   liq.df %<>% subset(grepl(subset_list, liq.df$poolName))  
@@ -221,7 +227,7 @@ active.DF %>%
 
 ***
 
-### GET: SINGLE POOLS {.tabset}
+##### GET: SINGLE POOLS {.tabset}
 
 <p style="margin-left: 40px">
 Download to: `r dir.IN.single`\ 
@@ -242,7 +248,7 @@ if(run_api){
     id <- poolId_list[x]
     pName <- poolNames_list[x]
     
-    cat(sprintf("#### %s \n", pName)) # Tabs header
+    cat(sprintf("###### %s \n", pName)) # Tabs header
     cat("<div>") 
     source("_SCRIPTS/script_SINGLE_v0.R") #download only
     cat("</div>") 
@@ -257,32 +263,23 @@ if(run_api){
 ```
 
 
-## 2. OVERVIEW 
+## 2. ANALYIS 
 
-All prices are expressed in **`r refCoin`**
+Analyze pool positions according to latest prices. \
+_All prices are in **`r refCoin`**_
 
 `r priceMatrix`
 
+Latest prices timestamp: **`r price.df[1,"timestamp_UTC", drop= TRUE]`**\ 
+
 ***
 
-Plotting paramenters:
+Plotting parameters:\
 
-```{r single-options}
-setStopLoss <- 0.005 #set desired stop loss for plots
+setStopLoss=`r setStopLoss` \
+allow_refData=`r allow_refData` \
 
-allow_refData = FALSE
-```
-
-
-
-
-#### Database Update
-
-```{r}
-#to be implemented
-```
-
-## 3. SINGLE POOLS {.tabset}
+### Single Pools {.tabset}
 ```{r loop-plots, results='asis', fig.align='center', fig.height=6, fig.width=10}
 # Useful lists
 poolId_list <- unique(liq.df$poolId) #all unique poolId
@@ -293,38 +290,50 @@ for (x in 1:length(poolId_list)){
   id <- poolId_list[x]
   pName <- poolNames_list[x]
   
-  cat(sprintf("### %s{.tabset}\n", pName)) # Tabs header
+  cat(sprintf("#### %s\n", pName)) # Tabs header
   
-    cat("<div> \n") #needed to encapsulate plot element so not to distrupt the TAB function
+    cat("<div> \n") #Separate block for the TAB function
     cat(sprintf("<p>Pool: %s (poolId=%s)</p>\n", pName, id))
     
-    # PLOTS
+    # DATA ANALYIS
     source("_SCRIPTS/script_CALC_v0.R") # all CALC
     source("_SCRIPTS/script_PLOT_v0.R") # all PLOTS
     
-    cat("#### PLOTS\ \n")
-      cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
-      print(pw) #main figure
-      cat("</div>\n")
+    # PLOTS
+    cat("<div>\n") #Separate block for the TAB function
+    print(pw) #main figure
+    cat("</div>\n")
   
     # Link to Binance pool
-   cat(sprintf('<p>Direct Link to Binance Pool: <a href="https://www.binance.com/en/swap/liquidity?poolId=%s">(%s)</a></p>\n', id, poolName))
+    cat(sprintf('<p>Direct Link to Binance Pool: <a href="https://www.binance.com/en/swap/liquidity?poolId=%s">(%s)</a></p>\n', id, poolName))
     
-    cat("#### TABLES\ \n") # Tabs header
-    cat("##### Pool Operations\n") # Tabs header
-    pool_LAST
-    cat("##### Pool Claims\n") 
-    claim_CALC
-    cat("##### Pool Endpoints\n")
-    end_DF
+    cat("<div> \n") 
+    cat("##### DATA-TABLES, sources:<br>\n") # Tabs header
+    cat(sprintf('Pool History: <a href="%s">%s</a><br>', pool.history.path, pool.history.path))
+    cat(sprintf('Pool Claims: <a href="%s">%s</a> <br>', claim.table.path, claim.table.path))
     cat("</div> \n") 
+    
+    #cat("###### Pool Operations<br>\n") 
+    #pool_LAST
+    #cat("###### Pool Claims<br>\n") 
+    #claim_CALC
+    #cat("###### Pool Endpoints<br>\n")
+    #end_DF
+    #cat("</div> \n") 
   }
 ```
 
 
+
+##### Database Update
+
+```{r}
+#to be implemented
+```
+
 ***
 
-## 4. POOL OVERVIEW
+## 3. POOL OVERVIEW
 
 TO IMPLEMENT\
 [x] automated plotting\
