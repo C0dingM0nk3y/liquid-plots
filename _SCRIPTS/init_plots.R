@@ -210,7 +210,7 @@ LiqPlots_Swaps <- function(){
   
   plot2 <- plot1 +
     geom_label_repel(data = tail(pool_SWAPS, 1), 
-                     aes(x=xLim_right, y=Swap1_X100, label = swap_text),
+                     aes(x=xLim_right, y=0, label = swap_text),
                      size = 3, #text size
                      force = 0.2, #repulsion force (avoid 2x labels to get too close) 
                      min.segment.length = 0, #0 = always plot segment
@@ -264,13 +264,13 @@ LiqPlots_PNL <- function(type="rel" #options are "abs" and "rel"
   ## A. Plot Values
   plotA <- plot0 +
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=0, color="HODL"), linewidth=1) +
-    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT - end_hodl_TOT,  color="IL"), linewidth=1) +
+    geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT-end_hodl_TOT,  color="IL/IG"), linewidth=1) +
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=ValueTOT+Cum_ValTOT-end_hodl_TOT,  color="PNL"), linewidth=1) +
     scale_y_continuous(limits = c(yMin_abs, yMax_abs),
                        #minor_breaks = seq(-0.5, 0.5,0.001), 
                        #breaks=seq(-0.5, 0.5, 0.0025)
                        ) +
-    ylab(sprintf("Value (%s)", refCoin))
+    ylab(sprintf("PNL (%s)", refCoin))
   
   ## B. Plot Relative Values
   plotB <- plot0 +

@@ -222,4 +222,11 @@ print(pw)
 cat("</div>\n")
 
 # Link to Binance pool
-cat(sprintf('<p><a href="https://www.binance.com/en/swap/liquidity?poolId=%s">Direct Link to Binance Pool (%s)</a></p>\n', id, poolName))
+cat(sprintf('<p>  Direct Link to <a href="https://www.binance.com/en/swap/liquidity?poolId=%s">**Binance Pool (%s)</a>** <- click to operate on pool</p>\n', id, poolName)) 
+
+# Link to full data
+cat("<div> \n") 
+cat("####### DATA-TABLES, sources:<br>\n") # Tabs header
+cat(sprintf('Pool History: <a href="%s">%s</a><br>', pool.history.path, pool.history.path))
+cat(sprintf('Pool Claims: <a href="%s">%s</a> <br>', claim.table.path, claim.table.path))
+cat("</div> \n") 
