@@ -36,13 +36,13 @@ LiqPlots_Trends <- function(nudge=TRUE){
     xlab("Datetime (UTC)")
   
   ## 1. ADD: annotations and threshohs (bottom layer)
-  limits_ss <- subset(limits_DF, !(Label_root =="Current")) #enpoints, minus current
+  limits_ss <- subset(limits_DF, !(Label_root =="Now")) #enpoints, minus current
   
   plot1 <- plot0 +
     geom_hline(yintercept = start_price, linetype="dashed") +
-    geom_hline(yintercept = limits_ss$Limit_Price, linetype="dashed", color= limits_ss$Color) #all beside "Current"
+    geom_hline(yintercept = limits_ss$Limit_Price, linetype="dashed", color= limits_ss$Color) #all beside "Now"
     
-    #geom_label_repel(data= subset(limits_DF, Label_root=="Current"), aes(x=xLim_left, y=start_price, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
+    #geom_label_repel(data= subset(limits_DF, Label_root=="Now"), aes(x=xLim_left, y=start_price, label = as.character(paste0("Entry Price: ",round(start_price,3),""))),
     #                 size=3.5, force = 1, fill= "white", direction="y") #, nudge_y = -start_price*0.1) 
     
   ## 2. ADD: PriceTrends
@@ -243,7 +243,7 @@ LiqPlots_PNL <- function(type="rel" #options are "abs" and "rel"
   pool_MERGED[,"ROI_net"] <- with(pool_MERGED, ValueTOT-start_value+Cum_ValTOT) #Value now - Value start (aka: IL) + Earn
   
   ## PLOT AESTETICS
-  yLim_offset <- 0.0025 # 0.25%
+  yLim_offset <- 0.005 # 0.25%
   yMax_rel <- max(pool_MERGED$`ROI%`, yLim_offset)
   yMin_rel <- min(-abs(pool_MERGED$IL), -yLim_offset)
   
@@ -279,7 +279,7 @@ LiqPlots_PNL <- function(type="rel" #options are "abs" and "rel"
     geom_line(data=pool_MERGED, aes(x=Date_UTC, y=-abs(IL)+Cum_ValTOTx100,  color="PNL"), linewidth=1) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 0.1), limits = c(yMin_rel, yMax_rel),
                        minor_breaks = seq(-0.5, 0.5,0.001), 
-                       breaks=seq(-0.5, 0.5, 0.0025)) +
+                       breaks=seq(-0.5, 0.5, 0.005)) +
     ylab("PNL %")
   
   if(type=="abs"){return(plotA)}
@@ -326,7 +326,7 @@ LiqPlots_plotAPY <- function(){
   ## PLOT 1: APY (tot)
   plot <- claim_CALC %>%
     ggplot(aes(x=Date_UTC, group=1)) + 
-    ggtitle("Yield (APY)") + 
+    ggtitle("Yield Breakdown (annualized)") + 
     scale_x_datetime(timezone = "UTC", limits = plot_lim) +
     
     # Formulas on APY achieve the effect of line stacking. (APY2 is added to APY1 and so on)
@@ -358,7 +358,7 @@ LiqPlots_plotAPY <- function(){
                      segment.linetype = 2, #"dash"
                      direction = "both", # segment direction: "both", "x", "y" 
                      nudge_x = nudge_x,
-                     nudge_y = lastCumAPY*0.2,
+                     nudge_y = lastCumAPY*0.25,
                      na.rm = T
     )
   
@@ -417,11 +417,11 @@ plotLimits.Calc <- function(stopLossTolerance = 0.01,
   for (r in 1:nrow(limits_df2)){
     label <- limits_df2[r, "Type"]
     if(str_starts(label, "SL")){
-      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Stop-loss", "firebrick1", "white") %>% as.list()}
+      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Stop-loss", "firebrick2", "white") %>% as.list()}
     if(str_starts(label, "BE")){
       limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Break-even", "dodgerblue3", "white") %>% as.list()}
     if(str_starts(label, "PriceNOW")){
-      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Current", "springgreen3", "black") %>% as.list()}
+      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Now","lightgreen", "black") %>% as.list()}
     
     #Extended labels
     limits_df2[r, "Label_Extended"] <- paste(limits_df2[r, "Label_root"], limits_df2[r, "Label_Text"], sep=": ") %>% unlist

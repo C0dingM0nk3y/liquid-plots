@@ -22,7 +22,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 ```{r general-options, code_folding="none"}
 #RUN OPTIONS
 #limit downlod to specific sublist (for troubleshooting purposes)
-subset_list <- c("BTC|ETH|STG|RUNE|DOGE") #use REGEX syntax 
+subset_list <- c("BTC|ETH|STG|RUNE|DOGE|STG|VET|GMX|MATIC|ADA|OP|ARB") #use REGEX to filter pools by their names 
 
 
 #toggle TRUE/FALSE to skip some parts of this script
@@ -314,8 +314,6 @@ All prices are expressed in **`r refCoin`**
 #### Active Pools DATA
 Overview of latest pools [currently active]
 
->>>THIS BELOW SHOULD GO INTO A FUNCTION<<<
-
 ```{r active-calc}
 #> Unpivot active-pools
 #> Append current prices
@@ -351,17 +349,14 @@ if(run_analysis){
 #### Database Update (SINGLE pools)
 
 For each pool that is currently active:
-- Import JASON from "/DOWNLOAD/SinglePools/"\
-- Export data as _unpivoted.csv into "/TABLES/SinglePools/"\
-- Finally, check if previous data are available and, if so, append new data (HISTORY)\
-
-> [ ] Consider wrapping the module below into a function. *Or also, not*
++ Import JASON from "/DOWNLOAD/SinglePools/"\
++ Export data as _unpivoted.csv into "/TABLES/SinglePools/"\
++ Finally, check if previous data are available and, if so, append new data (HISTORY)\
 
 ```{r analysis-ops}
-# Import JASON from "/DOWNLOAD/SinglePools/"
-# Export data as unpivoted .csv into "/TABLES/SinglePools/" (Claim ONLY)
-# OPS and SNAPSHOTS have the same structure, they are joined together into a single file (poolHistory.csv)
-# Finally, check if previous data are available and, if so, append new data (HISTORY)
+# TO-DO
+#> wrap into function
+#> export to single file, including all data
 
 if(run_analysis){
   
@@ -426,10 +421,17 @@ TO IMPLEMENT\
 [x] color coded tabs\
 [x] Subgroups\
 [x] Plot margins\
+[x] Add Strategy/take profit options\
 [ ] Summary table (Analysis part)\
                 
 ### Plots.byPool{.tabset}
-Click on tab below to select the pool to visualize
+Click on tab below to select the group to visualize
+
+**Color codes** \
+
++ <span style="background-color: orange;">Orange</span>: IL \> Accumulated Earning (_but below Stop-loss_) \
+
++ <span style="background-color: red;">Red</span>: IL \> Stop-loss \
 
 ***
 
@@ -457,18 +459,19 @@ for (i in poolId_list_original){
 summary.DF <- summary.DF[order(summary.DF$Value_TOT, decreasing = T), ]
 
 #LISTS
-list_higVal <- active.DF[active.DF$Value_TOT>100, ]$poolId 
-list_longTime <- active.DF[now()-summary.DF$startDate>30, ]$poolId 
+list_main <- active.DF[grep(active.DF$poolName, pattern = "BTC|ETH|OP|ARB|GMX"), ]$poolId 
+list_examples <- active.DF[grep(active.DF$poolName, pattern = "STG|RUNE|VET|MATIC|OP|ARB"), ]$poolId 
+list_stoploss <- active.DF[grep(active.DF$poolName, pattern = "DOGE"), ]$poolId 
 list_rest <- poolId_list_original %>%
-  setdiff(list_higVal) %>%
-  setdiff(list_longTime)
+  setdiff(list_main) %>%
+  setdiff(list_examples) %>%
+  setdiff(list_stoploss)
 ```
 
-#### Subgroups{.tabset}
-somethings
+#### Group 1
+Standard plotting behavior\
 
-##### Group 1{.tabset}
-Pools to monitor\
+##### {.tabset}
 
 ```{r plots1, results='asis', fig.align='center', fig.height=6, fig.width=10}
 
@@ -476,28 +479,34 @@ setStopLoss <- 0.005 #set desired stop loss for plots
 
 allow_refData = FALSE
 
-for (id in list_higVal){
+for (id in list_main){
   source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
   }
 ```
 
-##### Group 2{.tabset}
-Pools that are active since a long time
+#### Group 2
+A few pools with current ratio outside of boundaries. <br>
+Here I used the trigger to change the color of the background plot. <br>
+An automated transaction can be triggered instead. _[requires POST rights on Binance API]_ 
 
-```{r plots2, results='asis', fig.align='center', fig.height=6, fig.width=10}
+##### {.tabset}
+
+```{r plots2, results='asis', fig.align='center', fig.height=6, fig.width=10, warning=FALSE}
 
 setStopLoss <- 0.005 #set desired stop loss for plots
 
 allow_refData = FALSE
 
-for (id in list_longTime){
+for (id in list_examples){
   source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
   }
 ```
 
 
-##### Group 3{.tabset}
-Other plots
+#### Group 3
+Use to show take-profit
+
+##### {.tabset}
 
 ```{r plots3, results='asis', fig.align='center', fig.height=6, fig.width=10}
 setStopLoss <- 0.01 #set desired stop loss for plots
@@ -521,7 +530,7 @@ for (sl in c(0.001, 0.005, 0.01)){
   
   cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
   
-  for (id in list_higVal[1:3]){
+  for (id in list_main[1:3]){
     source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
     cat("***\n")
     cat("\n")
