@@ -18,9 +18,10 @@ LiqPlots_Trends <- function(nudge=TRUE){
   pool_LAST[,"Label"] <- ifelse(pool_LAST$PriceChange>1, paste0("Swap to ",coin2), paste0("Swap to ",coin1))
   
   # PLOT AESTHETICS
-  fullTitle <- sprintf("%s: %se [if HODL: %se (%s%s%%)]", #%% = '%'
-                       poolName, round(end_DF[,"ValueTOT"],2), round(end_hodl_TOT,2), 
-                       ifelse(end_valChange>0, "+", ""),  round(end_valChange*100,1)) # PLOT TITLE
+  #fullTitle <- sprintf("%s: %se [if HODL: %se (%s%s%%)]", #%% = '%'
+  #                     poolName, round(end_DF[,"ValueTOT"],2), round(end_hodl_TOT,2), 
+  #                     ifelse(end_valChange>0, "+", ""),  round(end_valChange*100,1)) # PLOT TITLE
+  fullTitle <- sprintf("%s (poolId:%s) [%se]",poolName, id, round(end_DF[,"ValueTOT"],2))
   
   # PLOT
   plot0 <- pool_LAST %>%
@@ -156,11 +157,12 @@ LiqPlots_ILChanges <- function(stopLossTolerance = 0.01, # expressed as max IL% 
   return(plot4)
 }
 
-LiqPlots_Swaps <- function(){
+LiqPlots_Swaps <- function(
+  take_profit = 0  #if positive, take profit on coin 1, if negative: on coin 2
+  ){
   #> Plots automatic swap events due to the prided liquidity
-  
+
   #> PLOT SUBSET
-  #pool_SWAPS <- subset(pool_LAST, subset = !(is.na(Swap1_X100)))
   pool_SWAPS <- pool_LAST #TEST
   
   ## PLOT AESTETICS
@@ -169,7 +171,9 @@ LiqPlots_Swaps <- function(){
   
   ySwap_range <- max(yLim_offset, maxSwap)*1.1 #applyes to both up and down (symmetrical)
   
-  # Automatic title
+  # Automatic message
+  swap_color <- "white" #defaults
+  
   if (end_DF[1,"Qnt1"] > start_qnt1){
     in_qnt <- end_DF[1,"Qnt1"] - start_qnt1
     in_coin <- coin1
@@ -181,15 +185,15 @@ LiqPlots_Swaps <- function(){
     out_qnt <- end_DF[1,"Qnt1"]- start_qnt1
     out_coin <- coin1}
   
+  swap_now <- tail(pool_SWAPS$Swap1_X100,1)
   swap_text <- sprintf("Swapping %s %s for %s %s\n[as if price: %s %s]", 
                         signif(in_qnt, 3), in_coin, signif(out_qnt, 3), out_coin, 
                        round(end_DF[1,"Qnt2"]/end_DF[1,"Qnt1"],2), coin2) #price is always calculated as Coin2/Coin1
   
   #PLOT
-  plot0 <- pool_LAST %>%
+  plot0 <- pool_SWAPS %>%
     ggplot(aes(x=Date_UTC)) +
     ggtitle("Swapped Coins") +
-    #ggtitle(swap_Title)+
     theme_classic() +
     theme(panel.grid.major.y=element_line(), 
           panel.grid.minor.y=element_line(linetype="dashed"))+
@@ -198,26 +202,54 @@ LiqPlots_Swaps <- function(){
                        labels = scales::percent_format(accuracy = NULL),
                        #minor_breaks = seq(-5, 5, 0.001), 
                        breaks=seq(-0.5, 5, 0.05)) +
-    geom_hline(yintercept = 0)
+    geom_hline(yintercept = 0) +
     xlab("Datetime (UTC)")
   
   ## 1. ADD: Swap data
   plot1 <- plot0 +
     geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap1_X100, color=coin1), linewidth=1.5) +
     geom_line(data=pool_SWAPS, aes(x=Date_UTC, y=Swap2_X100, color=coin2), linewidth=1.5) +
-    #geom_point(aes(y=PoolPrice, fill=Label),shape=21, colour= "black",  size=2, na.rm = TRUE) +
     ylab("Coin Swaps Effect (%)")
   
+  # Take profit aesthetics
+
+    if(take_profit==0){} #skip
+    #plot lines
+    else{
+      #take profit (line)
+      if(take_profit>0){
+        plot1 <- plot1 +
+          geom_hline(yintercept = take_profit, color="salmon", linetype="dashed", linewidth=1) +
+          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin1)),
+                           fill="salmon", size = 3, 
+                           force = 0, #repulsion force (avoid 2x labels to get too close) 
+                           min.segment.length = 10, direction = "y")
+        }
+      else if(take_profit<0){ 
+        plot1 <- plot1 +
+          geom_hline(yintercept = take_profit, color="cyan3", linetype="dashed", linewidth=1) +
+          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin2)),
+                           fill="cyan3", size = 3, 
+                           force = 0, #repulsion force (avoid 2x labels to get too close) 
+                           min.segment.length = 10, direction = "y")
+        }
+    
+      # changes labels position and color (if triggered)
+      if (abs(swap_now)>abs(take_profit)){
+        swap_color <- "limegreen"}
+  }
+   
   plot2 <- plot1 +
-    geom_label_repel(data = tail(pool_SWAPS, 1), 
-                     aes(x=xLim_right, y=0, label = swap_text),
-                     size = 3, #text size
-                     force = 0.2, #repulsion force (avoid 2x labels to get too close) 
-                     min.segment.length = 0, #0 = always plot segment
-                     segment.linetype = 2, #"dash"
-                     nudge_y = 0.01,
-                     direction = "y" # segment direction: "both", "x", "y" 
-                     )
+      geom_label_repel(data = tail(pool_SWAPS,1),
+                       aes(x=xLim_right, y=swap_now, label = swap_text),
+                       fill=swap_color,
+                       size = 2.5, #text size
+                       force = 0.2, #repulsion force (avoid 2x labels to get too close) 
+                       min.segment.length = 0, #0 = always plot segment
+                       segment.linetype = 2, #"dash"
+                       nudge_y = swap_now*-0.75,
+                       direction = "y" # segment direction: "both", "x", "y" 
+                       )
   
   return(plot2)
   
@@ -421,7 +453,7 @@ plotLimits.Calc <- function(stopLossTolerance = 0.01,
     if(str_starts(label, "BE")){
       limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Break-even", "dodgerblue3", "white") %>% as.list()}
     if(str_starts(label, "PriceNOW")){
-      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Now","lightgreen", "black") %>% as.list()}
+      limits_df2[r, c("Label_root", "Color", "TextColor")] <- c("Now","black", "white") %>% as.list()}
     
     #Extended labels
     limits_df2[r, "Label_Extended"] <- paste(limits_df2[r, "Label_root"], limits_df2[r, "Label_Text"], sep=": ") %>% unlist

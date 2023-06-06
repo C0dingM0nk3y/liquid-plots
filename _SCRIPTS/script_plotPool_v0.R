@@ -17,10 +17,6 @@ refData.path <- paste0(dir.REF.single,id,"_refData.csv")
 pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
 pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
-#pool_H[,"Qnt1"] %<>% as.numeric()
-#pool_H[,"Qnt2"] %<>% as.numeric()
-
-
 claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
 claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
@@ -153,11 +149,6 @@ end_ROInet_X100 <- end_maxEarnX100-abs(end_DF[1,"IL"])
 
 # MOVE into PLOT part?
 limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss) 
-                            #> returns useful cols like: 
-                            #> LimitX100, Limit_Price, 
-                            #> TextColor, Color,
-                            #> Label_Extended, nudge_x, nudge_y
-
 
 # PART 3: PLOT ASSEMBLY ####
 
@@ -184,15 +175,13 @@ plot_nudged <- c(xLim_left, xLim_right+nudge_x) %>% as.POSIXct(tz="UTC")
 
 # PLOT
 cat(sprintf("###### <span style='background-color:%s;'> %s </span><br>\n",bg_color, poolName))
-# cat(sprintf("###### %s <br>\n", poolName))
 cat("<div>\n") #needed to encapsulate plot element so not to distrupt the TAB function
 p1 <- LiqPlots_Trends() #plot1
 p2 <- LiqPlots_ILChanges(stopLossTolerance = setStopLoss) #plot2
-p3 <- LiqPlots_Swaps()
+p3 <- LiqPlots_Swaps(take_profit = takeProfit)
 p4abs <- LiqPlots_PNL(type = "abs")
 p4rel <- LiqPlots_PNL(type = "rel")
 p5 <- LiqPlots_plotAPY()
-
 
 # Arrange plots (pathwork)
 
@@ -202,13 +191,10 @@ pw_left <- p1/p2
 pw_left[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
 pw_left[[1]] %<>% + theme(plot.background = element_rect(fill = bg_color))
 pw_left[[2]] %<>% + theme(plot.background = element_rect(fill = bg_color))
-#pw[[2]] = pw[[2]] + theme(plot.title = element_blank()) # Remove title from second subplot
 
 pw_left <- pw_left + plot_layout(heights = c(6,6), nrow = 2)
 
 #Plot R
-#pw_right <- ggplot(p4bis)/p3/p4/p5
-#pw_right[[1]] %<>% + theme(plot.background = element_rect(fill = "white"), panel.background = element_rect(fill = panel_color))
 pw_right <- p3/p4abs/p4rel/p5
 pw_right[[1]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) # Remove x.axis title and tick names from subplot
 pw_right[[2]] %<>% + theme(axis.title.x = element_blank(), axis.text.x=element_blank()) 

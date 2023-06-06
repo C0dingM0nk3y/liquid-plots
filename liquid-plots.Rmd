@@ -12,11 +12,15 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 # {.tabset}
 
-[] Add descriptions\ 
-[] Change order of downloads\ 
+[] Add descriptions\
+
 [x] Improve coin filter\ 
+
 [] Wrap ref data into zip file\
-[] Claim from start\
+
+[] Change order of downloads\ 
+
+  [] Claim from start\
 
 
 ```{r general-options, code_folding="none"}
@@ -460,22 +464,24 @@ summary.DF <- summary.DF[order(summary.DF$Value_TOT, decreasing = T), ]
 
 #LISTS
 list_main <- active.DF[grep(active.DF$poolName, pattern = "BTC|ETH|OP|ARB|GMX"), ]$poolId 
-list_examples <- active.DF[grep(active.DF$poolName, pattern = "STG|RUNE|VET|MATIC|OP|ARB"), ]$poolId 
-list_stoploss <- active.DF[grep(active.DF$poolName, pattern = "DOGE"), ]$poolId 
+list_examples <- active.DF[grep(active.DF$poolName, pattern = "STG|RUNE|VET|ADA|MATIC|DOGE"), ]$poolId 
+list_takeProfit <- active.DF[grep(active.DF$poolName, pattern = "OP"), ]$poolId 
+list_stoploss <- active.DF[grep(active.DF$poolName, pattern = "MATIC"), ]$poolId 
 list_rest <- poolId_list_original %>%
   setdiff(list_main) %>%
   setdiff(list_examples) %>%
+  setdiff(list_takeProfit) %>%
   setdiff(list_stoploss)
 ```
 
-#### Group 1
+#### Group 1: Standard
 Standard plotting behavior\
 
 ##### {.tabset}
 
 ```{r plots1, results='asis', fig.align='center', fig.height=6, fig.width=10}
-
 setStopLoss <- 0.005 #set desired stop loss for plots
+takeProfit <- 0
 
 allow_refData = FALSE
 
@@ -484,7 +490,7 @@ for (id in list_main){
   }
 ```
 
-#### Group 2
+#### Group 2: User Warnings
 A few pools with current ratio outside of boundaries. <br>
 Here I used the trigger to change the color of the background plot. <br>
 An automated transaction can be triggered instead. _[requires POST rights on Binance API]_ 
@@ -492,8 +498,8 @@ An automated transaction can be triggered instead. _[requires POST rights on Bin
 ##### {.tabset}
 
 ```{r plots2, results='asis', fig.align='center', fig.height=6, fig.width=10, warning=FALSE}
-
 setStopLoss <- 0.005 #set desired stop loss for plots
+takeProfit <- 0
 
 allow_refData = FALSE
 
@@ -503,40 +509,47 @@ for (id in list_examples){
 ```
 
 
-#### Group 3
-Use to show take-profit
-
-##### {.tabset}
+#### Group 3: Take-Profit param {.tabset}
+A few examples on how imbalanced pools can also be used as a way to swap a coin for another one, that the investor prefers to accumulate. \
+From Impermanent Loss to Impermanent Gain. This also allow to set automated exit thresholds.
 
 ```{r plots3, results='asis', fig.align='center', fig.height=6, fig.width=10}
 setStopLoss <- 0.01 #set desired stop loss for plots
+takeProfit = 0 
 
 allow_refData = FALSE
 
-for (id in list_rest){
-  source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
-  }
-```
-
-#### Stop-loss param{.tabset}
-Effect of stop-loss parameter \
-_note: this applies only to on a subset of pools (max 3)_
-
-```{r plots4, results='asis', fig.align='center', fig.height=6, fig.width=10}
-allow_refData = FALSE
-
-for (sl in c(0.001, 0.005, 0.01)){
-  setStopLoss <- sl #set desired stop loss for plots
+for (tp in c(0,-0.1, 0.1, 0.2)){
+  takeProfit <- tp #set desired stop loss for plots
   
-  cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
+  cat(sprintf("##### take profit: %s%% <br>\n", round(tp*100,0)))
   
-  for (id in list_main[1:3]){
+  for (id in list_rest){
     source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
     cat("***\n")
     cat("\n")
   }
 }
 
+```
+
+#### Group 4: Stop-loss param {.tabset}
+Effect of stop-loss parameter \
+
+```{r plots4, results='asis', fig.align='center', fig.height=6, fig.width=10}
+allow_refData = FALSE
+
+for (sl in c(0.01, 0.005, 0.001)){
+  setStopLoss <- sl #set desired stop loss for plots
+  
+  cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
+  
+  for (id in list_stoploss){
+    source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+    cat("***\n")
+    cat("\n")
+  }
+}
 ```
 
 ***
