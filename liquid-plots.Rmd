@@ -12,16 +12,7 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 # {.tabset}
 
-[] Add descriptions\
-
-[x] Improve coin filter\ 
-
-[] Wrap ref data into zip file\
-
-[] Change order of downloads\ 
-
-  [] Claim from start\
-
+General Options:
 
 ```{r general-options, code_folding="none"}
 #RUN OPTIONS
@@ -41,6 +32,7 @@ keys.path <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plo
 #keys.path <- "credentials.txt" #default is "credential.txt", change if desired
 ```
 
+Plot Options:
 ```{r plot-options}
 #ANALYSIS OPTIONS
 setStopLoss <- 0.005 #set desired stop loss for plots
@@ -64,11 +56,16 @@ source("_SCRIPTS/init_plots.R")
 source("_SCRIPTS/init_dirs.R")
 ```
 
----
+***
 
 ## Part 1: DATA-DOWNLOAD
 
----
+
+[] Restructure download scheme to speed-up process\ 
+
+  [] Claim download: start from pool begin and continue until present _(currently doing the opposite: longer time)_
+
+***
 
 ### API address and credentials
 Import USER_KEY from *"/credentials.txt"*\
@@ -173,6 +170,8 @@ if(run_api){
 }else{cat("SKIPPED\n")}
 ```
 
+***
+
 #### PLOT: ACTIVE POOLS
 found `r ifelse(run_api, length(unique(liq.df$poolName)), "X")` pools:
 
@@ -267,21 +266,15 @@ if(run_api){
 ```
 
 
-```{r cleanup1}
-var_all <- ls()
-var_keep <- c(grep(var_all, pattern = ".df|dir|DF|run|API|key|full|subset", value=T),
-              lsf.str()) # all functions names, also considered variables
-var_rm <- setdiff(var_all,var_keep)              
-rm(list=c(var_rm, "var_all", "var_keep", "var_rm"))
-```
-
 ## Part 2: DATA ANALYSIS
 
 TO IMPLEMENT\
-[] single export data analysis (collect all data in single file) [BIG: requirs data restructing]\
+[] single export data analysis (collect all data in single file) [BIG: requires restructing of data download/analysis]\
 [] historical data analysis (results from previous LP positions)\
 
-```{r analysis-init}
+***
+
+```{r analysis-init, include=FALSE}
 # VARIABLES and DF that need to be re-imported before running Part 2
 
 if(run_api==FALSE){
@@ -304,8 +297,10 @@ coinList <- poolNames_list %>% str_split("/") %>% unlist() %>%
   unique()
 ```
 
+***
+
 ### Price Matrix
-Extract prices from latest API [`r price.df[1,"timestamp_UTC"]`]:\
+Extract prices from latest API **[`r price.df[1,"timestamp_UTC"]`]**:\
 
 ```{r price-matrix, include=FALSE}
 refCoin = "USDT"
@@ -316,11 +311,15 @@ if(run_analysis){
   
   for (c in coinList){
     priceMatrix[c,refCoin] <- getPrice(price.df, c, refCoin = refCoin) %>% as.numeric()}
+  
+  priceMatrix
 
 }else{cat("SKIPPED\n")}
 ```
 
 All prices are expressed in **`r refCoin`**
+
+***
 
 #### Active Pools DATA
 Overview of latest pools [currently active]
@@ -360,8 +359,11 @@ if(run_analysis){
 #### Database Update (SINGLE pools)
 
 For each pool that is currently active:
+
 + Import JASON from "/DOWNLOAD/SinglePools/"\
+
 + Export data as _unpivoted.csv into "/TABLES/SinglePools/"\
+
 + Finally, check if previous data are available and, if so, append new data (HISTORY)\
 
 ```{r analysis-ops}
@@ -426,17 +428,16 @@ if(run_analysis){
 ## Part 3: PLOTS
 
 TO IMPLEMENT\
-[x] automated plotting\
-[x] link to Binance pool\
 [x] link to source data\
 [x] color coded tabs\
-[x] Subgroups\
-[x] Plot margins\
 [x] Add Strategy/take profit options\
 [ ] Summary table (Analysis part)\
+
+***
                 
 ### Plots.byPool{.tabset}
-Click on tab below to select the group to visualize
+
+***
 
 **Color codes** \
 
@@ -446,6 +447,8 @@ Click on tab below to select the group to visualize
 
 ***
 
+Click on tab below to select the group to visualize
+
 ```{r overview, include=FALSE}
 poolId_list_original <- poolId_list
 
@@ -453,12 +456,9 @@ summary.DF <- data.frame(active.DF, row.names = active.DF$poolId)
 
 for (i in poolId_list_original){
   pool.history.path <- paste0(dir.TABLES.single,i,"_pool.History.csv") #includes OPS and SNAPS
-  #claim.table.path <- paste0(dir.TABLES.single,i,"_claim.csv")
   
   pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
   pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-  #claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
-  #claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
   start_DF <- pool_H %>% 
     subset(operation=="ADD") %>% 
@@ -493,7 +493,7 @@ takeProfit <- 0
 allow_refData = FALSE
 
 for (id in list_main){
-  source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
+  source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
   }
 ```
 
@@ -511,7 +511,7 @@ takeProfit <- 0
 allow_refData = FALSE
 
 for (id in list_examples){
-  source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
+  source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
   }
 ```
 
@@ -526,13 +526,13 @@ takeProfit = 0
 
 allow_refData = FALSE
 
-for (tp in c(0,-0.1, 0.1, 0.2)){
+for (tp in c(0,-0.1, 0.1, 0.2)){ #no take profit, -10%, +10%, +20%
   takeProfit <- tp #set desired stop loss for plots
   
   cat(sprintf("##### take profit: %s%% <br>\n", round(tp*100,0)))
   
   for (id in list_rest){
-    source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
+    source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
     cat("***\n")
     cat("\n")
   }
@@ -552,22 +552,23 @@ for (sl in c(0.01, 0.005, 0.001)){
   cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
   
   for (id in list_stoploss){
-    source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
+    source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
     cat("***\n")
     cat("\n")
   }
 }
 ```
 
-***
+### ==========
+
 ***
 
-### .footnotes
+##### .footnotes
 Notes on PNL vs. HODL plots: \
 _why does IL/IG looks different on the 2 plots?_\
 <ul>
   <li>
-  PNL (USDT) plots uses "live" IL: that means that something that in the "past" may have been an IL (in case of exit) now look as an impermanent gain (because price of asset has changed meanwhile)\
+  PNL (USDT) plots uses "dynamic" IL: that means that something that in the "past" may have been an IL (in case of exit) now look as an impermanent gain (because price of asset has changed meanwhile)\
 _This view seems more useful to me to people who enter and exit pool often, as the want to     consolidate their IG._
   </li>
   <li>
@@ -575,3 +576,19 @@ _This view seems more useful to me to people who enter and exit pool often, as t
   _This view seems more relevant to poeple who want to minimize risk, no matter market conditions (aka, no speculation on future value, no care to IG)_
   </li>
 </ul>
+
+## Part 4: OVERVIEW
+
+TO IMPLEMENT\
+
+[] Analysis of all plots (including past ones).
+
+[] Calculation of overall profits from LP use.
+
+  [] Differentiate Earning from Swap fee, from Earning due to Imp. Gain. 
+
+***
+
+This part will be dedicated to produce an overview of all recent pools, showing opening dates, durations, earn and IL, in a **table format**. \
+
+> To be implemented
