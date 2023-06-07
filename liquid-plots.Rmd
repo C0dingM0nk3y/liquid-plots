@@ -18,18 +18,17 @@ General Options:
 #RUN OPTIONS
 
 #limit downlod to specific sublist (for troubleshooting purposes)
-subset_list <- c("BTC|ETH|STG|RUNE|DOGE|STG|VET|GMX|MATIC|ADA|OP|ARB") #use REGEX to filter pools by their names 
+subset_list <- c("BTC|ETH") #use REGEX to filter pools by their names 
 #> this is used in combination with subset_download or subset_analysis
 
 
 #toggle TRUE/FALSE to skip some parts of this script
 run_api = FALSE # dowload data/usel local
-  subset_download = TRUE #FALSE = use full data
+  subset_download = FALSE #FALSE = use full data
 run_analysis = TRUE
-  subset_analysis = TRUE #FALSE = use full data
+  subset_analysis = FALSE #FALSE = use full data
 
-keys.path <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #default is "credential.txt", change if desired
-#keys.path <- "credentials.txt" #default is "credential.txt", change if desired
+keys.path <- "credentials.txt" #default is "credential.txt", change if desired
 ```
 
 Plot Options:
@@ -61,9 +60,9 @@ source("_SCRIPTS/init_dirs.R")
 ## Part 1: DATA-DOWNLOAD
 
 
-[] Restructure download scheme to speed-up process\ 
+[ ] Restructure download scheme to speed-up process\ 
 
-  [] Claim download: start from pool begin and continue until present _(currently doing the opposite: longer time)_
+  [ ] Claim download: start from pool begin and continue until present _(currently doing the opposite: longer time)_
 
 ***
 
@@ -107,8 +106,8 @@ Data will be recovered from [`r API_root`] using the following credentials:\
 ### DOWNLOAD Binance Data [API]
 
 for info, refer to: https://binance-docs.github.io/apidocs/spot/en/#change-log\
-Download to: `r dir.IN.single`\
 Download to: `r dir.IN`\
+Download to: `r dir.IN.single`\
 
 ***
 #### GET: PRICES
@@ -269,8 +268,8 @@ if(run_api){
 ## Part 2: DATA ANALYSIS
 
 TO IMPLEMENT\
-[] single export data analysis (collect all data in single file) [BIG: requires restructing of data download/analysis]\
-[] historical data analysis (results from previous LP positions)\
+[ ] single export data analysis (collect all data in single file) [BIG: requires restructing of data download/analysis]\
+[ ] historical data analysis (results from previous LP positions)\
 
 ***
 
@@ -278,13 +277,17 @@ TO IMPLEMENT\
 # VARIABLES and DF that need to be re-imported before running Part 2
 
 if(run_api==FALSE){
+  if (!(file.exists(paste0(dir.IN,"API_price_unpacked.csv")))){
+    stop("Missing file: ", paste0(dir.IN,"API_price_unpacked.csv", "  -> select run_api=TRUE"))}
+  if (!(file.exists(paste0(dir.IN,"API_liquidity_unpacked.csv")))){
+    stop("Missing file: ", paste0(dir.IN,"API_liquidity_unpacked.csv", "  -> select run_api=TRUE"))}
+  
   price.df <- read.csv2(paste0(dir.IN,"API_price_unpacked.csv"))
   liq.df <- read.csv2(paste0(dir.IN,"API_liquidity_unpacked.csv"))
  
   if(subset_analysis){
-    message("FILTER APPLIED: only selected pools are kept")            #TEMP
-    liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  #TEMP
-  
+    message("FILTER APPLIED: only selected pools are kept")           
+    liq.df %<>% subset(grepl(subset_list, liq.df$poolName))}  
    }
   
 # Useful lists
@@ -447,121 +450,18 @@ TO IMPLEMENT\
 
 ***
 
-Click on tab below to select the group to visualize
+##### Select Pool{.tabset}
 
-```{r overview, include=FALSE}
-poolId_list_original <- poolId_list
-
-summary.DF <- data.frame(active.DF, row.names = active.DF$poolId) 
-
-for (i in poolId_list_original){
-  pool.history.path <- paste0(dir.TABLES.single,i,"_pool.History.csv") #includes OPS and SNAPS
-  
-  pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
-  pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
-
-  start_DF <- pool_H %>% 
-    subset(operation=="ADD") %>% 
-    tail(1)# find last ADD
-  
-  summary.DF[as.character(i), "startDate"] <- start_DF[1, "Date_UTC", drop=T]
-}
-
-summary.DF <- summary.DF[order(summary.DF$Value_TOT, decreasing = T), ]
-
-#LISTS
-list_main <- active.DF[grep(active.DF$poolName, pattern = "BTC|ETH|OP|ARB|GMX"), ]$poolId 
-list_examples <- active.DF[grep(active.DF$poolName, pattern = "STG|RUNE|VET|ADA|MATIC|DOGE"), ]$poolId 
-list_takeProfit <- active.DF[grep(active.DF$poolName, pattern = "OP"), ]$poolId 
-list_stoploss <- active.DF[grep(active.DF$poolName, pattern = "MATIC"), ]$poolId 
-list_rest <- poolId_list_original %>%
-  setdiff(list_main) %>%
-  setdiff(list_examples) %>%
-  setdiff(list_takeProfit) %>%
-  setdiff(list_stoploss)
-```
-
-#### Group 1: Standard
-Standard plotting behavior\
-
-##### {.tabset}
-
-```{r plots1, results='asis', fig.align='center', fig.height=6, fig.width=10}
-setStopLoss <- 0.005 #set desired stop loss for plots
-takeProfit <- 0
-
-allow_refData = FALSE
-
-for (id in list_main){
-  source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
-  }
-```
-
-#### Group 2: User Warnings
-A few pools with current ratio outside of boundaries. <br>
-Here I used the trigger to change the color of the background plot. <br>
-An automated transaction can be triggered instead. _[requires POST rights on Binance API]_ 
-
-##### {.tabset}
-
-```{r plots2, results='asis', fig.align='center', fig.height=6, fig.width=10, warning=FALSE}
-setStopLoss <- 0.005 #set desired stop loss for plots
-takeProfit <- 0
-
-allow_refData = FALSE
-
-for (id in list_examples){
+```{r plots1, results='asis', fig.align='center', fig.height=6, fig.width=10, warning=FALSE}
+for (id in poolId_list){
   source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
   }
 ```
 
 
-#### Group 3: Take-Profit param {.tabset}
-A few examples on how imbalanced pools can also be used as a way to swap a coin for another one, that the investor prefers to accumulate. \
-From Impermanent Loss to Impermanent Gain. This also allow to set automated exit thresholds.
-
-```{r plots3, results='asis', fig.align='center', fig.height=6, fig.width=10}
-setStopLoss <- 0.01 #set desired stop loss for plots
-takeProfit = 0 
-
-allow_refData = FALSE
-
-for (tp in c(0,-0.1, 0.1, 0.2)){ #no take profit, -10%, +10%, +20%
-  takeProfit <- tp #set desired stop loss for plots
-  
-  cat(sprintf("##### take profit: %s%% <br>\n", round(tp*100,0)))
-  
-  for (id in list_rest){
-    source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
-    cat("***\n")
-    cat("\n")
-  }
-}
-
-```
-
-#### Group 4: Stop-loss param {.tabset}
-Effect of stop-loss parameter \
-
-```{r plots4, results='asis', fig.align='center', fig.height=6, fig.width=10}
-allow_refData = FALSE
-
-for (sl in c(0.01, 0.005, 0.001)){
-  setStopLoss <- sl #set desired stop loss for plots
-  
-  cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
-  
-  for (id in list_stoploss){
-    source("_SCRIPTS/script_poolPlot_v1.R") # all plot calc
-    cat("***\n")
-    cat("\n")
-  }
-}
-```
-
-### _______________________
+##### __________________
  
-#### .footnotes
+###### .footnotes
 Notes on PNL vs. HODL plots: \
 _why does IL/IG looks different on the 2 plots?_\
 <ul>
@@ -579,11 +479,11 @@ _This view seems more useful to me to people who enter and exit pool often, as t
 
 TO IMPLEMENT\
 
-[] Analysis of all plots (including past ones).
+[ ] Analysis of all plots (including past ones).
 
-[] Calculation of overall profits from LP use.
+[ ] Calculation of overall profits from LP use.
 
-  [] Differentiate Earning from Swap fee, from Earning due to Imp. Gain. 
+  [ ] Differentiate Earning from Swap fee, from Earning due to Imp. Gain. 
 
 ***
 
