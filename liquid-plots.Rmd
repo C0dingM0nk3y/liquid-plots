@@ -559,11 +559,9 @@ for (sl in c(0.01, 0.005, 0.001)){
 }
 ```
 
-### ==========
-
-***
-
-##### .footnotes
+### _______________________
+ 
+#### .footnotes
 Notes on PNL vs. HODL plots: \
 _why does IL/IG looks different on the 2 plots?_\
 <ul>
