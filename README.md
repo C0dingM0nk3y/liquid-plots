@@ -72,10 +72,11 @@ First 2 chunks contain a few options that can be used to tune the script behavio
 
 Chunk 1: `general-options`
 
-+ `keys.path` can be used to provide a different path for credential path.
++ `keys.path`: can be used to provide a different path for credential path.
 
-+ `run_api` control the API behavior. If set to FALSE, no new data are downloaded, but the analysis is performed on local data.
++ `run_api`: control the API behavior. If set to FALSE, no new data are downloaded, but the analysis is performed on local data.
 
++ `subset_list`: in case of users with many differnt pools, this can be used to select a subset of pools/coins to process. _uses REGEX syntax_ 
 
 Chunk 2: `plot-options`
 

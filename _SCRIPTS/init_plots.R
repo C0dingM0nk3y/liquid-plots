@@ -185,7 +185,7 @@ LiqPlots_Swaps <- function(
     out_qnt <- end_DF[1,"Qnt1"]- start_qnt1
     out_coin <- coin1}
   
-  swap_now <- tail(pool_SWAPS$Swap1_X100,1)
+  swap_now <- ifelse(take_profit>=0, tail(pool_SWAPS$Swap1_X100,1), tail(pool_SWAPS$Swap2_X100,1))
   swap_text <- sprintf("Swapping %s %s for %s %s\n[as if price: %s %s]", 
                         signif(in_qnt, 3), in_coin, signif(out_qnt, 3), out_coin, 
                        round(end_DF[1,"Qnt2"]/end_DF[1,"Qnt1"],2), coin2) #price is always calculated as Coin2/Coin1
@@ -219,17 +219,17 @@ LiqPlots_Swaps <- function(
       #take profit (line)
       if(take_profit>0){
         plot1 <- plot1 +
-          geom_hline(yintercept = take_profit, color="salmon", linetype="dashed", linewidth=1) +
-          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin1)),
-                           fill="salmon", size = 3, 
+          geom_hline(yintercept = take_profit, color="cyan3", linetype="dashed", linewidth=1) +
+          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin2)),
+                           fill="cyan3", size = 3, 
                            force = 0, #repulsion force (avoid 2x labels to get too close) 
                            min.segment.length = 10, direction = "y")
         }
       else if(take_profit<0){ 
         plot1 <- plot1 +
-          geom_hline(yintercept = take_profit, color="cyan3", linetype="dashed", linewidth=1) +
-          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin2)),
-                           fill="cyan3", size = 3, 
+          geom_hline(yintercept = take_profit, color="salmon", linetype="dashed", linewidth=1) +
+          geom_label_repel(data = tail(pool_SWAPS,1), aes(x=xLim_left, y=take_profit*1.4, label = paste("Take profit:", coin1)),
+                           fill="salmon", size = 3, 
                            force = 0, #repulsion force (avoid 2x labels to get too close) 
                            min.segment.length = 10, direction = "y")
         }
@@ -246,7 +246,6 @@ LiqPlots_Swaps <- function(
                        size = 2.5, #text size
                        force = 0.2, #repulsion force (avoid 2x labels to get too close) 
                        min.segment.length = 0, #0 = always plot segment
-                       segment.linetype = 2, #"dash"
                        nudge_y = swap_now*-0.75,
                        direction = "y" # segment direction: "both", "x", "y" 
                        )
