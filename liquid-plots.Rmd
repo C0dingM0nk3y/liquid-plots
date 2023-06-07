@@ -493,7 +493,7 @@ takeProfit <- 0
 allow_refData = FALSE
 
 for (id in list_main){
-  source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+  source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
   }
 ```
 
@@ -511,7 +511,7 @@ takeProfit <- 0
 allow_refData = FALSE
 
 for (id in list_examples){
-  source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+  source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
   }
 ```
 
@@ -532,7 +532,7 @@ for (tp in c(0,-0.1, 0.1, 0.2)){
   cat(sprintf("##### take profit: %s%% <br>\n", round(tp*100,0)))
   
   for (id in list_rest){
-    source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+    source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
     cat("***\n")
     cat("\n")
   }
@@ -552,7 +552,7 @@ for (sl in c(0.01, 0.005, 0.001)){
   cat(sprintf("##### max %s%% loss<br>\n", round(setStopLoss*100,2)))
   
   for (id in list_stoploss){
-    source("_SCRIPTS/script_plotPool_v0.R") # all plot calc
+    source("_SCRIPTS/script_plotPool_v1.R") # all plot calc
     cat("***\n")
     cat("\n")
   }
