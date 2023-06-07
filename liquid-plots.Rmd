@@ -35,6 +35,9 @@ run_api = FALSE # dowload data/usel local
 run_analysis = TRUE
   subset_analysis = TRUE #FALSE = use full data
 run_plots = TRUE
+
+keys.path <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #default is "credential.txt", change if desired
+#keys.path <- "credentials.txt" #default is "credential.txt", change if desired
 ```
 
 ```{r plot-options }
@@ -64,30 +67,29 @@ source("_SCRIPTS/init_dirs.R")
 
 ### API address and credentials
 Import USER_KEY from *"/credentials.txt"*\
-Use format and save as into [root dir] as *'credentials.txt'*:\
-<p style="margin-left: 40px">
-key;YOUR-BINANCE-API-KEY\
-prKey;YOUR-PRIVATE-KEY\
-</p>
+Format on 2 lines, as shown below, and save as:\
+`r keys.path`\
+
+<p style="margin-left: 40px"> 
+first line: PUBLIC-API-KEY<br>
+second line: YOUR-PRIVATE-KEY</p>
 
 ```{r credentials, results = "asis"}
 #API address
 API_root <- "https://api.binance.com" 
   
 if(run_api){
-  myPrivatePath <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #TEMP
   
   #Import credentials
-  #keys <- read.csv2("credentials.txt", col.names = c("Type", "Key"), header = F)
-  keys_import <- read.csv2(myPrivatePath, col.names = c("Type", "Key"), header = F)
+  keys_import <- read_lines(keys.path, n_max = 2)
   
-  key_public <- keys_import[1,"Key", drop=T]
-  key_private <- keys_import[2,"Key", drop=T]
+  key_public <- keys_import[1]
+  key_private <- keys_import[2]
   rm("keys_import")
   
   #USER FEEDBACK
   if(key_public=="YOUR-BINANCE-API-KEY"){
-    stop("STOP: add your Binance API credential to /credential.txt (; separated)")
+    stop("STOP: add your Binance API credential to /credential.txt. \nFormat:\n\tpublic-key\n\tprivate-key")
   }
 }
 ```
