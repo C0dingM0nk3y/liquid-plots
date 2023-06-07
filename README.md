@@ -95,7 +95,7 @@ Open the file _liq-pool_example.html_ to visualize an offline example with a few
 
 #### 2. Run script on sample data
 
-1. Unzip the content of _sample_data.zip_ and save the folder DOWNLOADS/ into the root path (overwrite existing files, if any)
+1. Unzip the content of _sample_data.zip_ and save the folder DOWNLOADS/ and TABLES/ into the root path (overwrite existing files, if any)
 
 2. Navigate the .Rmd notebook to the first chunk: `general-options`. \ Select `run_api`= FALSE to disable API download.
 
