@@ -25,8 +25,10 @@ Author: C0dingM0nk3y    [>>GitHub link<<](https://github.com/C0dingM0nk3y)
 
 ```{r general-options, code_folding="none"}
 #RUN OPTIONS
+
 #limit downlod to specific sublist (for troubleshooting purposes)
 subset_list <- c("BTC|ETH|STG|RUNE|DOGE|STG|VET|GMX|MATIC|ADA|OP|ARB") #use REGEX to filter pools by their names 
+#> this is used in combination with subset_download or subset_analysis
 
 
 #toggle TRUE/FALSE to skip some parts of this script
@@ -34,15 +36,18 @@ run_api = FALSE # dowload data/usel local
   subset_download = TRUE #FALSE = use full data
 run_analysis = TRUE
   subset_analysis = TRUE #FALSE = use full data
-run_plots = TRUE
 
 keys.path <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt" #default is "credential.txt", change if desired
 #keys.path <- "credentials.txt" #default is "credential.txt", change if desired
 ```
 
-```{r plot-options }
+```{r plot-options}
 #ANALYSIS OPTIONS
-temp = 1
+setStopLoss <- 0.005 #set desired stop loss for plots
+takeProfit <- 0 #> from -0.99 to 0.99: threshhold for take profit (%)  
+                #> 0 = disabled, >0 take profit on coin 1, <0 take profit on coin 2
+
+allow_refData = FALSE #allow the use of externally provided data. Currently disabled.
 ```
 
 
