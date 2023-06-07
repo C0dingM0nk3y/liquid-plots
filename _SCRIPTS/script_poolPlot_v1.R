@@ -211,7 +211,9 @@ cat("</div>\n")
 # TEXT Section
 cat("<div> \n") 
   # Link to Binance pool
+  cat("\ *** \ \n") 
   cat(sprintf('<p>  Direct Link to <a href="https://www.binance.com/en/swap/liquidity?poolId=%s">**Binance Pool (%s)</a>** <- click to operate on pool</p>\n', id, poolName)) 
+  cat("\ *** \ \n") 
 
   # Link to full data
   cat("####### SOURCE DATA:<br>\n") # Tabs header
