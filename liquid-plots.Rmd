@@ -23,12 +23,13 @@ subset_list <- c("BTC|ETH") #use REGEX to filter pools by their names
 
 
 #toggle TRUE/FALSE to skip some parts of this script
-run_api = FALSE # dowload data/usel local
+run_api = TRUE # download data/user local
   subset_download = FALSE #FALSE = use full data
 run_analysis = TRUE
   subset_analysis = FALSE #FALSE = use full data
 
-keys.path <- "credentials.txt" #default is "credential.txt", change if desired
+#keys.path <- "credentials.txt" #default is "credential.txt", change if desired
+keys.path <-"C:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt"
 ```
 
 Plot Options:
