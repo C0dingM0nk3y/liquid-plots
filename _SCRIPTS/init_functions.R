@@ -148,15 +148,21 @@ claim.tableInterpreter <- function(jsonPath){
   # Read LiquidPool Claims exports from Binance API and unpivot them to a readable table
   # Returns data.frame
   
+  #sanity check: discard empty files
+  claim.raw <- fromJSON(jsonPath, simplifyVector = T, flatten = T)
+  
   #input file
-  claim.j <- fromJSON(jsonPath, simplifyVector = T, flatten = T) %>%
-    subset(status==1) %>%
-    unique() #this is important in case of joined JSON from multiple API calls: 
-             #> they ALWAYS have some duplicated entry at the interface between file 1 and 2 
-             #> this is because of the reason data is downloaded)
-
-  claim.j[,"claimAmount"] %<>% as.numeric()
-  claim.j[,"Date_UTC"] <- claim.j$claimedTime %>% msec_to_datetime()
+  if (length(claim.raw)>0){ #returns # of columns (0 if empty))
+    claim.j <- claim.raw %>%
+      subset(status==1) %>%
+      unique() #this is important in case of joined JSON from multiple API calls: 
+               #> they ALWAYS have some duplicated entry at the interface between file 1 and 2 
+               #> this is because of the reason data is downloaded)
+  
+    claim.j[,"claimAmount"] %<>% as.numeric()
+    claim.j[,"Date_UTC"] <- claim.j$claimedTime %>% msec_to_datetime()}
+  else{message("\n", jsonPath, "JSON file has no Claimed data: SKIPPED")
+       return(NA)}#return NA if no data if available
   
   # pivot the dataframe so to have one 1-entry for each operation 
   #> instead than 3: Coin1/Coin2/BonusReward

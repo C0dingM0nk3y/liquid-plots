@@ -23,13 +23,13 @@ subset_list <- c("BTC|ETH") #use REGEX to filter pools by their names
 
 
 #toggle TRUE/FALSE to skip some parts of this script
-run_api = TRUE # download data/user local
+run_api = FALSE # download data/user local
   subset_download = FALSE #FALSE = use full data
 run_analysis = TRUE
   subset_analysis = FALSE #FALSE = use full data
 
 #keys.path <- "credentials.txt" #default is "credential.txt", change if desired
-keys.path <-"C:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt"
+keys.path <-"D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/liquid-plot_myCredential.txt"
 ```
 
 Plot Options:
@@ -391,8 +391,11 @@ if(run_analysis){
     
     # CLAIMED DATA
     claim_DF <- claim.tableInterpreter(claim.j.path)
-    write.csv2(claim_DF, claim.table.path, row.names = F) # EXPORT
-    cat(sprintf("\t _claim.csv (%s rows)", nrow(claim_DF)))
+    if(is.data.frame(claim_DF)){
+      write.csv2(claim_DF, claim.table.path, row.names = F) # EXPORT
+      cat(sprintf("\t _claim.csv (%s rows)", nrow(claim_DF)))}
+    else{
+      cat("\tno claimed data (SKIP)")}
     
     # INTEPRET ops table
     ops_DF <- ops.tableInterpreter(ops.j.path)

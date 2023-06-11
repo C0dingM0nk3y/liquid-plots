@@ -332,7 +332,7 @@ LiqPlots_plotAPY <- function(){
   ## Y-RANGE #set max Y to avoid sudden peaks to change the scale
   
   # CALC: move elsewhere?
-  claim_CALC[, "timeDiff_D"] <- (as.Date(claim_CALC[,"Date_UTC"])-as.Date(start_date)) %>% #already exprered in days
+  claim_CALC[, "timeDiff_D"] <- (as.Date(claim_CALC[,"Date_UTC"])-as.Date(start_date)) %>% #already expressed in days
     round(2) %>% as.numeric() #round and converts to numeric
   claim_CALC[, "APY_1"] <- with(claim_CALC, `Cum_%1`/timeDiff_D*365)
   claim_CALC[, "APY_2"] <- with(claim_CALC, `Cum_%2`/timeDiff_D*365)
@@ -345,6 +345,7 @@ LiqPlots_plotAPY <- function(){
                 0.01, #plot at least up to 1% 
                 na.rm = T) 
   lastCumAPY <- claim_CALC$APY_TOT %>% tail(1)
+  if(is.nan(lastCumAPY)){lastCumAPY<-0} # in case of of 0/0 (aka: no claimed data)
   
   #min value between max iAPY and 4x (last) Cumul EARN 
   ylimMax <- min(maxAPY*1.1, lastCumAPY*3)
@@ -378,6 +379,7 @@ LiqPlots_plotAPY <- function(){
     theme_classic() +
     theme(panel.grid.major.y=element_line(), panel.grid.minor.y=element_line(linetype="dotted"))
   
+  if (lastCumAPY>0){#sanity check
   plot <- plot +
     geom_label_repel(data = tail(claim_CALC, 1), 
                      aes(x=xLim_right, y=lastCumAPY, label = lastCumAPY_label),
@@ -392,6 +394,7 @@ LiqPlots_plotAPY <- function(){
                      nudge_y = lastCumAPY*0.25,
                      na.rm = T
     )
+  }
   
   
   return(plot)

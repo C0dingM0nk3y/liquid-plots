@@ -17,8 +17,16 @@ refData.path <- paste0(dir.REF.single,id,"_refData.csv")
 pool_H <- read.csv2(pool.history.path) #%>% as.tibble()
 pool_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
 
-claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
-claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
+if (file.exists(claim.table.path)){
+  claim_H <- read.csv2(claim.table.path) #REPLACE WITH HIST FILE
+  claim_H[,"Date_UTC"] %<>% as.POSIXct(tz="UTC")
+}else{
+  claim_H <- data.frame(Date_UTC = now(tzone = "UTC"), #mock Dataframe
+                        claimed1 = 0,
+                        claimed2= 0,
+                        claimed3 = 0, 
+                        Coin3=NA)
+  }
 
 # PART 2: POOL CALCULATIONS ####
 
@@ -100,6 +108,10 @@ for (r in 1:nrow(pool_LAST)){
 #> scan the full history of pool claims, and FILTER for those that happened AFTER 'poolStart' date
 
 claim_CALC <- subset(claim_H, Date_UTC >= start_date)
+if(nrow(claim_CALC)==0){ #workaround in case of pool that is re-opened but no claims were made after start_date
+  claim_CALC[1, c("claime1", "claimed2", "claimed3")] <- 0
+  claim_CALC[1,"Date_UTC"] <- now()
+}
 
 #calculate cumulData
 if(is.na(coin3)){claim_CALC[,"claimed3"] <- NA} #sanity check (some pools have no extra Rewards)
@@ -223,3 +235,4 @@ cat("<div> \n")
   cat("</ul>\n") 
 
 cat("</div>\n") 
+
