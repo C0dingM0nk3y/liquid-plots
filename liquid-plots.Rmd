@@ -23,7 +23,7 @@ subset_list <- c("BTC|ETH") #use REGEX to filter pools by their names
 
 
 #toggle TRUE/FALSE to skip some parts of this script
-run_api = FALSE # download data/user local
+run_api = TRUE # download data/user local
   subset_download = FALSE #FALSE = use full data
 run_analysis = TRUE
   subset_analysis = FALSE #FALSE = use full data
@@ -238,10 +238,16 @@ if(run_api){
       if (max_iter==0){break} #allow to break loop in case this is desirable (e.g. quick update)
       
       last_claim <- claim.j_list[[n]]
-      if (length(last_claim)==100){ #that means that data reached limit (100) and need a separate API call to prev. one
-        lastTimestamp <- last_claim[[100]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
-        
-        cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
+      
+      #> changed from ==100 to >90. Reason: some exports from Binance have less than 100 entries, despite tehre are many more in the past.
+      if (length(last_claim)>90){ #that means that data reached limit (100) and need a separate API call to prev. one
+        lastTimestamp <- last_claim[[length(last_claim)]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
+      
+      #> PREV version
+      #if (length(last_claim)==90){ #that means that data reached limit (100) and need a separate API call to prev. one
+        #lastTimestamp <- last_claim[[100]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
+       
+         cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
         claim.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/claimedHistory", timestamp = TRUE, sign = TRUE,
                          API_param = paste0("type=1&limit=100&poolId=",id, "&endTime=", lastTimestamp)) 
                     #Why lastTimestamp and NOT lastTimestamp-1

@@ -1,12 +1,14 @@
+pacman::p_load('magrittr')
+
 #### Extra module: converts snapshots historical data from file ####
 
 #INPUT: one of my 'LiqPool.snapshot_fullhist.csv' files
 #OUTPUTS: 1. a DF called 'snapshots.HIST_wide.csv', with a collection of all snapshot prices recovered from my own data
 #         2. a series of files that can be read directly from the plotting function to add historical data to plots
 
+
 make_refData = TRUE #different output formats
 make_poolHist = TRUE 
-
 
 history_path <- "D:/Clouds/Dropbox/Everywhere/PROJECTS/PiggyBank/Binance/PROCESSING/LiqPool.snapshot_fullhist.csv"
 
