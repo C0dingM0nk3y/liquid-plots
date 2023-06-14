@@ -243,11 +243,7 @@ if(run_api){
       if (length(last_claim)>90){ #that means that data reached limit (100) and need a separate API call to prev. one
         lastTimestamp <- last_claim[[length(last_claim)]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
       
-      #> PREV version
-      #if (length(last_claim)==90){ #that means that data reached limit (100) and need a separate API call to prev. one
-        #lastTimestamp <- last_claim[[100]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
-       
-         cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
+        cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
         claim.j <- BINANCE.GET(API_root, "/sapi/v1/bswap/claimedHistory", timestamp = TRUE, sign = TRUE,
                          API_param = paste0("type=1&limit=100&poolId=",id, "&endTime=", lastTimestamp)) 
                     #Why lastTimestamp and NOT lastTimestamp-1
