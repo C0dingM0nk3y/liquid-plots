@@ -450,7 +450,8 @@ TO IMPLEMENT\
 
 **Color codes** \
 
-+ <span style="background-color: orange;">Orange</span>: IL \> Accumulated Earning (_but below Stop-loss_) \
++ <span style="background-color: orange;">Orange</span>: IL \> Accumulated Earning (_but below Stop-loss_) -> UPTREND \
++ <span style="background-color: 8ef0cf;">Aquamarine</span>: IL \> Accumulated Earning (_but below Stop-loss_)  -> DOWNTREND/TakeProfit \
 
 + <span style="background-color: red;">Red</span>: IL \> Stop-loss \
 

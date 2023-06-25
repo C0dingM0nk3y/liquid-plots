@@ -158,6 +158,7 @@ end_hodl_TOT <- end_hodl1+end_hodl2
 end_valChange <- (end_DF[,"ValueTOT"]/start_value)-1
 end_ROInet <- end_DF[,"ValueTOT"]-start_value+end_maxEarn 
 end_ROInet_X100 <- end_maxEarnX100-abs(end_DF[1,"IL"]) 
+end_direction <- ifelse(end_DF[,"Swap1_X100"]>=0,"-","+")
 
 # MOVE into PLOT part?
 limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss) 
@@ -168,7 +169,9 @@ limits_DF <- plotLimits.Calc(stopLossTolerance= setStopLoss)
 
 #Change BACKGROUND color if pool is "at risk"
 bg_color <- "white"
-if(end_ROInet_X100<0){bg_color <- "orange"}
+threshhold_ignore <- 0.001 #ROI losses up to 0.1% are ignored. (useful at begin of pool) 
+if(end_ROInet_X100 < (threshhold_ignore*-1)  & end_direction=="+"){bg_color <- "orange"}
+if(end_ROInet_X100 < (threshhold_ignore*-1)  & end_direction=="-"){bg_color <- "#8ef0cf"} #same as acquamarine3, but it is also recognized by HTML
 if(end_ROInet_X100<(setStopLoss*-1)){bg_color <- "red"}
 panel_color <- bg_color
 
