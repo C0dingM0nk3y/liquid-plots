@@ -240,7 +240,7 @@ if(run_api){
       last_claim <- claim.j_list[[n]]
       
       #> changed from ==100 to >90. Reason: some exports from Binance have less than 100 entries, despite tehre are many more in the past.
-      if (length(last_claim)>90){ #that means that data reached limit (100) and need a separate API call to prev. one
+      if (length(last_claim)>=75){ #that means that data reached limit (100) and need a separate API call to prev. one. Reduced to 75 because some exports have less than 100 entries (despite being uncompelted)
         lastTimestamp <- last_claim[[length(last_claim)]]$claimedTime #recovers last claimed time [[100]] from last list [[n-1]]
       
         cat(paste0("\titer=",n+1,"\t")) #add an indentation and iter number to export      
@@ -451,7 +451,7 @@ TO IMPLEMENT\
 **Color codes** \
 
 + <span style="background-color: orange;">Orange</span>: IL \> Accumulated Earning (_but below Stop-loss_) -> UPTREND \
-+ <span style="background-color: 8ef0cf;">Aquamarine</span>: IL \> Accumulated Earning (_but below Stop-loss_)  -> DOWNTREND/TakeProfit \
++ <span style="background-color: #8ef0cf;">Aquamarine</span>: IL \> Accumulated Earning (_but below Stop-loss_)  -> DOWNTREND/TakeProfit \
 
 + <span style="background-color: red;">Red</span>: IL \> Stop-loss \
 
