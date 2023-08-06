@@ -1,5 +1,7 @@
 pacman::p_load('magrittr')
 
+source("init_functions.R")
+
 #### Extra module: converts snapshots historical data from file ####
 
 #INPUT: one of my 'LiqPool.snapshot_fullhist.csv' files
@@ -46,7 +48,7 @@ write.csv2(HIST_wide, path.HIST.wide, row.names = F)
 
 
 ### PART 2: SINGLE POOLS ####
-
+  
 allPoolId <- unique(HIST_wide$poolId)
 
 if(make_refData){
