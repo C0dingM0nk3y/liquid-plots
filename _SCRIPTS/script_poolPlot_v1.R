@@ -23,7 +23,7 @@ if (file.exists(claim.table.path)){
 }else{
   claim_H <- data.frame(Date_UTC = now(tzone = "UTC"), #mock Dataframe
                         claimed1 = 0,
-                        claimed2= 0,
+                        claimed2 = 0,
                         claimed3 = 0, 
                         Coin3=NA)
   }
