@@ -1,5 +1,9 @@
 pacman::p_load('magrittr')
 
+<<<<<<< HEAD
+=======
+source("init_functions.R")
+>>>>>>> 9a6167369a2edabb548791aff14542c0862a7cec
 
 #### Extra module: converts snapshots historical data from file ####
 
@@ -47,7 +51,7 @@ write.csv2(HIST_wide, path.HIST.wide, row.names = F)
 
 
 ### PART 2: SINGLE POOLS ####
-
+  
 allPoolId <- unique(HIST_wide$poolId)
 
 if(make_refData){
