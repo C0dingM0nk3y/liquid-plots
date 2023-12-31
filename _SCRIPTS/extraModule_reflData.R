@@ -1,9 +1,8 @@
 pacman::p_load('magrittr')
 
-<<<<<<< HEAD
-=======
+
 source("init_functions.R")
->>>>>>> 9a6167369a2edabb548791aff14542c0862a7cec
+
 
 #### Extra module: converts snapshots historical data from file ####
 
