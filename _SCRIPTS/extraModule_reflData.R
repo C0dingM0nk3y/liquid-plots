@@ -1,5 +1,6 @@
 pacman::p_load('magrittr')
 
+
 #### Extra module: converts snapshots historical data from file ####
 
 #INPUT: one of my 'LiqPool.snapshot_fullhist.csv' files
